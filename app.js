@@ -1,0 +1,335 @@
+/* 世界遺産検定2級 一問一答 — 出題ロジック */
+(function () {
+  "use strict";
+
+  var BANK = (window.WH_QUESTIONS || []).slice();
+  var CATS = [];
+  BANK.forEach(function (q) { if (CATS.indexOf(q.cat) < 0) CATS.push(q.cat); });
+
+  var STORE_KEY = "wh2-quiz-v1";
+  var COUNTS = [10, 20, 30, 0]; // 0 = すべて
+
+  var state = {
+    cats: CATS.slice(),
+    count: 20,
+    order: "shuffle",
+    queue: [],
+    idx: 0,
+    answers: [],   // {q, picked}
+    locked: false
+  };
+
+  var $ = function (id) { return document.getElementById(id); };
+
+  /* ---------- 保存（端末内のみ・失敗しても動く） ---------- */
+  function load() {
+    try { return JSON.parse(localStorage.getItem(STORE_KEY) || "null"); }
+    catch (e) { return null; }
+  }
+  function save(data) {
+    try { localStorage.setItem(STORE_KEY, JSON.stringify(data)); } catch (e) { /* 無視 */ }
+  }
+
+  /* ---------- 画面切替 ---------- */
+  function show(name) {
+    ["setup", "quiz", "result"].forEach(function (n) {
+      $("screen-" + n).hidden = (n !== name);
+    });
+    window.scrollTo({ top: 0, behavior: "auto" });
+  }
+
+  /* ---------- 設定画面 ---------- */
+  function buildSetup() {
+    var box = $("cat-chips");
+    box.innerHTML = "";
+    CATS.forEach(function (cat) {
+      var n = BANK.filter(function (q) { return q.cat === cat; }).length;
+      var b = document.createElement("button");
+      b.type = "button";
+      b.className = "chip";
+      b.id = "cat-" + CATS.indexOf(cat);
+      b.setAttribute("aria-pressed", "true");
+      b.innerHTML = cat + '<span class="n">' + n + "</span>";
+      b.addEventListener("click", function () {
+        var on = b.getAttribute("aria-pressed") === "true";
+        if (on && state.cats.length === 1) return; // 最低1つは残す
+        b.setAttribute("aria-pressed", on ? "false" : "true");
+        state.cats = CATS.filter(function (c, i) {
+          return $("cat-" + i).getAttribute("aria-pressed") === "true";
+        });
+        updateTally();
+      });
+      box.appendChild(b);
+    });
+
+    var cbox = $("count-chips");
+    cbox.innerHTML = "";
+    COUNTS.forEach(function (c) {
+      var b = document.createElement("button");
+      b.type = "button";
+      b.className = "chip";
+      b.id = "count-" + c;
+      b.setAttribute("role", "radio");
+      b.setAttribute("aria-checked", c === state.count ? "true" : "false");
+      b.textContent = c === 0 ? "すべて" : c + "問";
+      b.addEventListener("click", function () {
+        state.count = c;
+        COUNTS.forEach(function (o) { $("count-" + o).setAttribute("aria-checked", o === c ? "true" : "false"); });
+        updateTally();
+      });
+      cbox.appendChild(b);
+    });
+
+    Array.prototype.forEach.call(document.querySelectorAll("[data-order]"), function (b) {
+      b.addEventListener("click", function () {
+        state.order = b.dataset.order;
+        Array.prototype.forEach.call(document.querySelectorAll("[data-order]"), function (o) {
+          o.setAttribute("aria-checked", o === b ? "true" : "false");
+        });
+      });
+    });
+
+    $("bank-count").textContent = BANK.length;
+    $("foot-count").textContent = BANK.length;
+    updateTally();
+
+    var last = load();
+    if (last && last.total) {
+      $("last-result").hidden = false;
+      $("last-line").innerHTML = "直近の成績：<b>" + last.correct + " / " + last.total + "</b>（正答率 " +
+        Math.round(last.correct / last.total * 100) + "%）／ 未正解 <b>" + (last.wrongIds || []).length + "</b>問";
+      $("btn-retry-wrong").disabled = !(last.wrongIds && last.wrongIds.length);
+    }
+  }
+
+  function pool() {
+    return BANK.filter(function (q) { return state.cats.indexOf(q.cat) >= 0; });
+  }
+  function plannedCount() {
+    var p = pool().length;
+    return state.count === 0 ? p : Math.min(state.count, p);
+  }
+  function updateTally() {
+    var n = plannedCount();
+    $("setup-tally").innerHTML = "出題：<b>" + n + "</b>問<span> ／ 対象 " + pool().length + "問</span>";
+    $("btn-start").disabled = n === 0;
+  }
+
+  function shuffle(arr) {
+    for (var i = arr.length - 1; i > 0; i--) {
+      var j = Math.floor(Math.random() * (i + 1));
+      var t = arr[i]; arr[i] = arr[j]; arr[j] = t;
+    }
+    return arr;
+  }
+
+  /* ---------- 出題 ---------- */
+  function start(list) {
+    state.queue = list;
+    state.idx = 0;
+    state.answers = [];
+    $("q-total").textContent = list.length;
+    show("quiz");
+    render();
+  }
+
+  function startFromSetup() {
+    var list = pool();
+    list = state.order === "shuffle" ? shuffle(list.slice()) : list.slice();
+    if (state.count > 0) list = list.slice(0, state.count);
+    start(list);
+  }
+
+  function render() {
+    var q = state.queue[state.idx];
+    state.locked = false;
+
+    $("q-index").textContent = state.idx + 1;
+    $("progress-bar").style.width = (state.idx / state.queue.length * 100) + "%";
+    $("score-line").innerHTML = "正答 <b>" + correctCount() + "</b>";
+    $("q-cat").textContent = q.cat;
+    $("q-text").textContent = q.q;
+    $("q-note").hidden = true;
+    $("btn-next").hidden = true;
+    $("hint").hidden = false;
+    $("btn-next").textContent = state.idx === state.queue.length - 1 ? "結果を見る" : "次の問題へ";
+
+    var ol = $("choices");
+    ol.innerHTML = "";
+    q.choices.forEach(function (c, i) {
+      var li = document.createElement("li");
+      var b = document.createElement("button");
+      b.type = "button";
+      b.className = "choice";
+      b.dataset.i = i;
+      b.innerHTML =
+        '<span class="choice-top">' +
+          '<span class="choice-key">' + (i + 1) + "</span>" +
+          '<span class="choice-label"></span>' +
+          '<span class="choice-verdict"></span>' +
+        "</span>";
+      b.querySelector(".choice-label").textContent = c.t;
+      b.addEventListener("click", function () { answer(i); });
+      li.appendChild(b);
+      ol.appendChild(li);
+    });
+  }
+
+  function answer(picked) {
+    if (state.locked) return;
+    state.locked = true;
+
+    var q = state.queue[state.idx];
+    state.answers.push({ q: q, picked: picked });
+
+    Array.prototype.forEach.call($("choices").querySelectorAll(".choice"), function (b) {
+      var i = Number(b.dataset.i);
+      b.disabled = true;
+      var verdict = b.querySelector(".choice-verdict");
+      if (i === q.a) {
+        b.classList.add("is-correct");
+        verdict.textContent = "正解";
+      } else if (i === picked) {
+        b.classList.add("is-picked-wrong");
+        verdict.textContent = "あなたの回答";
+      } else {
+        b.classList.add("is-rest");
+        verdict.textContent = "誤り";
+      }
+      var exp = document.createElement("p");
+      exp.className = "choice-exp";
+      exp.textContent = q.choices[i].e;
+      b.appendChild(exp);
+    });
+
+    if (q.note) { $("q-note").textContent = q.note; $("q-note").hidden = false; }
+    $("score-line").innerHTML = "正答 <b>" + correctCount() + "</b>";
+    $("progress-bar").style.width = ((state.idx + 1) / state.queue.length * 100) + "%";
+    $("hint").hidden = true;
+    $("btn-next").hidden = false;
+    $("btn-next").focus({ preventScroll: true });
+  }
+
+  function correctCount() {
+    return state.answers.filter(function (a) { return a.picked === a.q.a; }).length;
+  }
+
+  function next() {
+    if (state.idx >= state.queue.length - 1) { finish(); return; }
+    state.idx++;
+    render();
+  }
+
+  /* ---------- 結果 ---------- */
+  function finish() {
+    var total = state.answers.length;
+    var ok = correctCount();
+    var rate = total ? Math.round(ok / total * 100) : 0;
+
+    $("result-correct").textContent = ok;
+    $("result-total").textContent = total;
+    $("result-rate").textContent = rate + "%";
+
+    var verdict, comment;
+    if (rate >= 90) {
+      verdict = "合格圏"; comment = "十分な水準です。取りこぼした論点だけ確認して、あとは苦手カテゴリを回しましょう。";
+    } else if (rate >= 75) {
+      verdict = "ほぼ合格圏"; comment = "2級の合格ラインは60%程度とされます。安定して超えるために、誤答の選択肢の解説まで読み込みましょう。";
+    } else if (rate >= 60) {
+      verdict = "ボーダー"; comment = "合格ラインぎりぎりです。年号・件数・登録基準など数字がからむ問題を重点的に。";
+    } else {
+      verdict = "要復習"; comment = "まずは条約と理念、しくみと制度の基礎を固めるのが近道です。誤答の復習から始めましょう。";
+    }
+    $("result-verdict").textContent = verdict;
+    $("result-comment").textContent = comment;
+
+    // カテゴリ別
+    var byCat = {};
+    state.answers.forEach(function (a) {
+      var c = byCat[a.q.cat] || (byCat[a.q.cat] = { n: 0, ok: 0 });
+      c.n++;
+      if (a.picked === a.q.a) c.ok++;
+    });
+    var bars = $("result-bars");
+    bars.innerHTML = "";
+    Object.keys(byCat).forEach(function (cat) {
+      var c = byCat[cat];
+      var pct = Math.round(c.ok / c.n * 100);
+      var li = document.createElement("li");
+      li.className = "bar-row" + (pct < 60 ? " is-weak" : "");
+      li.innerHTML =
+        '<span class="bar-name"></span>' +
+        '<span class="bar-num">' + c.ok + "/" + c.n + "　" + pct + '%</span>' +
+        '<span class="bar-track"><span class="bar-fill" style="width:' + pct + '%"></span></span>';
+      li.querySelector(".bar-name").textContent = cat;
+      bars.appendChild(li);
+    });
+
+    // 誤答リスト
+    var wrong = state.answers.filter(function (a) { return a.picked !== a.q.a; });
+    $("wrong-count").textContent = wrong.length + "問";
+    var list = $("review-list");
+    list.innerHTML = "";
+    if (!wrong.length) {
+      var p = document.createElement("p");
+      p.className = "review-empty";
+      p.textContent = "全問正解です。まちがえた問題はありません。";
+      list.appendChild(p);
+    } else {
+      wrong.forEach(function (a) {
+        var li = document.createElement("li");
+        li.innerHTML = '<p class="r-q"></p><p class="r-a">正解：<b></b></p>';
+        li.querySelector(".r-q").textContent = a.q.q;
+        li.querySelector(".r-a b").textContent = a.q.choices[a.q.a].t;
+        list.appendChild(li);
+      });
+    }
+    $("btn-review-wrong").disabled = !wrong.length;
+
+    save({
+      total: total,
+      correct: ok,
+      wrongIds: wrong.map(function (a) { return a.q.id; }),
+      at: Date.now()
+    });
+
+    show("result");
+  }
+
+  function reviewWrong(ids) {
+    var list = BANK.filter(function (q) { return ids.indexOf(q.id) >= 0; });
+    if (!list.length) return;
+    start(shuffle(list));
+  }
+
+  /* ---------- イベント ---------- */
+  $("btn-start").addEventListener("click", startFromSetup);
+  $("btn-next").addEventListener("click", next);
+  $("btn-quit").addEventListener("click", function () {
+    if (state.answers.length) finish(); else show("setup");
+  });
+  $("btn-again").addEventListener("click", startFromSetup);
+  $("btn-home").addEventListener("click", function () { buildSetup(); show("setup"); });
+  $("btn-review-wrong").addEventListener("click", function () {
+    reviewWrong(state.answers.filter(function (a) { return a.picked !== a.q.a; })
+      .map(function (a) { return a.q.id; }));
+  });
+  $("btn-retry-wrong").addEventListener("click", function () {
+    var last = load();
+    if (last && last.wrongIds) reviewWrong(last.wrongIds);
+  });
+
+  document.addEventListener("keydown", function (e) {
+    if ($("screen-quiz").hidden) return;
+    if (e.metaKey || e.ctrlKey || e.altKey) return;
+    if (!state.locked && e.key >= "1" && e.key <= "4") {
+      var i = Number(e.key) - 1;
+      var q = state.queue[state.idx];
+      if (q && i < q.choices.length) { e.preventDefault(); answer(i); }
+    } else if (state.locked && (e.key === "Enter" || e.key === " ")) {
+      e.preventDefault(); next();
+    }
+  });
+
+  buildSetup();
+})();

@@ -1,0 +1,126 @@
+<title>世界遺産検定2級 一問一答</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@500;700&family=Zen+Kaku+Gothic+New:wght@400;500;700&family=IBM+Plex+Mono:wght@400;600&display=swap">
+<link rel="stylesheet" href="styles.css">
+
+<header class="masthead">
+  <div class="wrap masthead-inner">
+    <div class="brand">
+      <span class="brand-mark" aria-hidden="true">
+        <svg viewBox="0 0 32 32" width="26" height="26" role="presentation">
+          <rect x="3" y="6" width="26" height="20" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.6"/>
+          <path d="M3 12h26M11 6v20M21 6v20" fill="none" stroke="currentColor" stroke-width="1.1" opacity=".55"/>
+          <circle cx="16" cy="19" r="3.4" fill="none" stroke="currentColor" stroke-width="1.6"/>
+        </svg>
+      </span>
+      <span class="brand-text">
+        <strong>世界遺産検定2級</strong>
+        <span>一問一答トレーニング</span>
+      </span>
+    </div>
+    <p class="masthead-meta"><span id="bank-count">60</span>問収録 ／ 全選択肢に解説つき</p>
+  </div>
+</header>
+
+<main class="wrap" id="main">
+
+  <!-- ── 設定画面 ── -->
+  <section id="screen-setup" class="screen">
+    <div class="lede">
+      <h1>出題範囲をえらぶ</h1>
+      <p>4択に答えると、選ばなかった選択肢もふくめて<strong>4つすべての解説</strong>が開きます。誤答の理由まで読むのが2級対策の近道です。</p>
+    </div>
+
+    <div class="panel">
+      <fieldset class="field">
+        <legend>カテゴリ</legend>
+        <div class="chips" id="cat-chips"></div>
+      </fieldset>
+
+      <div class="field-row">
+        <fieldset class="field">
+          <legend>出題数</legend>
+          <div class="chips" id="count-chips" role="radiogroup" aria-label="出題数"></div>
+        </fieldset>
+        <fieldset class="field">
+          <legend>出題順</legend>
+          <div class="chips" role="radiogroup" aria-label="出題順">
+            <button type="button" class="chip" data-order="shuffle" role="radio" aria-checked="true">ランダム</button>
+            <button type="button" class="chip" data-order="seq" role="radio" aria-checked="false">収録順</button>
+          </div>
+        </fieldset>
+      </div>
+
+      <div class="setup-foot">
+        <p class="tally" id="setup-tally">出題：<b>20</b>問</p>
+        <button type="button" class="btn btn-primary" id="btn-start">はじめる</button>
+      </div>
+    </div>
+
+    <div class="panel panel-quiet" id="last-result" hidden>
+      <h2 class="panel-title">前回の記録</h2>
+      <p class="last-line" id="last-line"></p>
+      <button type="button" class="btn btn-ghost" id="btn-retry-wrong">まちがえた問題だけ復習する</button>
+    </div>
+
+    <p class="disclaimer">出題内容は公式教材にもとづく学習用の自作問題です。制度・登録件数は 2024年の登録（日本26件）時点の情報です。</p>
+  </section>
+
+  <!-- ── 出題画面 ── -->
+  <section id="screen-quiz" class="screen" hidden>
+    <div class="progress" aria-hidden="true"><span id="progress-bar"></span></div>
+
+    <div class="quiz-head">
+      <p class="counter"><b id="q-index">1</b><span>/</span><span id="q-total">20</span></p>
+      <p class="score" id="score-line">正答 <b>0</b></p>
+      <button type="button" class="btn btn-link" id="btn-quit">中断</button>
+    </div>
+
+    <article class="card question-card">
+      <p class="tag" id="q-cat">条約と理念</p>
+      <h2 class="q-text" id="q-text"></h2>
+      <ol class="choices" id="choices"></ol>
+      <p class="note" id="q-note" hidden></p>
+    </article>
+
+    <div class="quiz-foot">
+      <p class="hint" id="hint">選択肢を選ぶ（キーボード 1〜4 でも回答できます）</p>
+      <button type="button" class="btn btn-primary" id="btn-next" hidden>次の問題へ</button>
+    </div>
+  </section>
+
+  <!-- ── 結果画面 ── -->
+  <section id="screen-result" class="screen" hidden>
+    <div class="result-head">
+      <p class="tag" id="result-verdict">結果</p>
+      <p class="result-score"><b id="result-correct">0</b><span>/</span><span id="result-total">20</span></p>
+      <p class="result-rate">正答率 <b id="result-rate">0%</b></p>
+      <p class="result-comment" id="result-comment"></p>
+    </div>
+
+    <div class="panel">
+      <h2 class="panel-title">カテゴリ別</h2>
+      <ul class="bars" id="result-bars"></ul>
+    </div>
+
+    <div class="panel" id="review-panel">
+      <h2 class="panel-title">まちがえた問題 <span class="panel-count" id="wrong-count">0</span></h2>
+      <ul class="review" id="review-list"></ul>
+    </div>
+
+    <div class="result-actions">
+      <button type="button" class="btn btn-primary" id="btn-again">もう一度おなじ条件で</button>
+      <button type="button" class="btn btn-ghost" id="btn-review-wrong">まちがえた問題だけ復習</button>
+      <button type="button" class="btn btn-ghost" id="btn-home">出題範囲をえらび直す</button>
+    </div>
+  </section>
+
+</main>
+
+<footer class="foot wrap">
+  <p>世界遺産検定2級 一問一答 ／ 全<span class="mono" id="foot-count">60</span>問・全選択肢解説つき</p>
+</footer>
+
+<script src="data/questions.js"></script>
+<script src="app.js"></script>
