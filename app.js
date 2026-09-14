@@ -286,16 +286,16 @@
      青いモコモコの人形。褒めたり励ましたりする役。
      SVGを1か所で組み立て、気分（mood）と台詞だけ差し替える。 */
 
-  var MOODS = ["idle", "think", "good", "oops", "party", "cheerup"];
+  // 2体いる。青いのが普段の相棒、白いのは 1/RARE の確率でだけ出てくる。
+  var RARE = 20;
 
-  function mascotSVG(mood) {
-    return '<svg class="mascot" viewBox="0 0 100 106" data-mood="' + mood + '" role="img" aria-hidden="true">' +
-      // 胴（毛のフィルタ）
-      '<ellipse class="m-body" cx="50" cy="62" rx="30" ry="35" filter="url(#fur)"/>' +
-      // 腕は胴の手前に描く。太い線で引くと小さく表示しても形が残る
+  function rollWho() { return Math.floor(Math.random() * RARE) === 0 ? "non" : "sun"; }
+
+  // 青いモコモコ
+  function sunSVG() {
+    return '<ellipse class="m-body" cx="50" cy="62" rx="30" ry="35" filter="url(#fur)"/>' +
       '<path class="arm arm-l" d="M26 58Q12 66 7 79"/>' +
       '<path class="arm arm-r" d="M74 58Q88 66 93 79"/>' +
-      // 顔
       '<g class="eye">' +
         '<circle class="ball" cx="39" cy="30" r="12.5"/>' +
         '<circle class="pupil" cx="41" cy="32" r="5.2"/>' +
@@ -310,8 +310,29 @@
       '<path class="mouth mouth-o" d="M42 59c3 7 13 7 16 0-5 3-11 3-16 0z"/>' +
       '<path class="mouth mouth-wide" d="M39 57c4 13 18 13 22 0-7 5-15 5-22 0z"/>' +
       '<path class="mouth mouth-smile" d="M40 57q10 12 20 0" stroke-width="3.4"/>' +
-      '<path class="mouth mouth-flat" d="M44 60h12" stroke-width="3.2"/>' +
-    '</svg>';
+      '<path class="mouth mouth-flat" d="M44 60h12" stroke-width="3.2"/>';
+  }
+
+  // 白いモコモコ。頭のぼんぼり、黒い豆粒の目、赤い鼻と腕。口はない。
+  function nonSVG() {
+    return '<g filter="url(#fur)">' +
+        '<circle class="n-body" cx="50" cy="15" r="8.5"/>' +
+        '<circle class="n-body" cx="50" cy="43" r="24"/>' +
+        '<ellipse class="n-body" cx="50" cy="76" rx="23" ry="27"/>' +
+      '</g>' +
+      '<path class="n-scarf" d="M29 62q21 9 42 0"/>' +
+      '<path class="arm arm-l n-arm" d="M29 68Q19 78 17 90"/>' +
+      '<path class="arm arm-r n-arm" d="M71 68Q81 78 83 90"/>' +
+      '<circle class="n-eye" cx="40" cy="41" r="3.6"/>' +
+      '<circle class="n-eye" cx="60" cy="39" r="3.6"/>' +
+      '<path class="n-eye-arc" d="M36.4 42q3.6-4.4 7.2 0" />' +
+      '<path class="n-eye-arc" d="M56.4 40q3.6-4.4 7.2 0" />' +
+      '<circle class="n-nose" cx="50" cy="50" r="6"/>';
+  }
+
+  function mascotSVG(mood, who) {
+    return '<svg class="mascot" viewBox="0 0 100 106" data-mood="' + mood + '" data-who="' + who +
+      '" role="img" aria-hidden="true">' + (who === "non" ? nonSVG() : sunSVG()) + '</svg>';
   }
 
   // 同じ台詞が続かないように、直前に出したものを覚えておく
@@ -348,9 +369,21 @@
     ]
   };
 
-  // toon = マスコット＋吹き出し。ひとつの部品として使い回す
-  function toon(box, mood, html) {
-    box.innerHTML = '<div class="toon">' + mascotSVG(mood) + '<p class="speak">' + html + "</p></div>";
+  // 白いほうは口数が少ない。出番も少ないので、台詞も短く落ち着いた調子にする。
+  var NON_LINES = {
+    greet:  ["……こんにちは。", "きょうは わたしが みてるね。", "ゆっくり いこうね。"],
+    good:   ["ふふ、せいかい。", "ちゃんと おぼえてるね。", "えらい。", "しずかに すごい。"],
+    ng:     ["だいじょうぶ。", "わたしも まちがえるよ。", "つぎ、いこう。", "あわてなくて いいよ。"],
+    finale: ["おつかれさま。", "よく がんばったね。"]
+  };
+
+  // toon = マスコット＋吹き出し。ひとつの部品として使い回す。
+  // 表示のたびに 1/RARE で白いほうが出る。そのときは台詞も差し替える。
+  function toon(box, mood, line, sub, ctx) {
+    var who = rollWho();
+    if (who === "non" && NON_LINES[ctx]) line = pick("non-" + ctx, NON_LINES[ctx]);
+    box.innerHTML = '<div class="toon">' + mascotSVG(mood, who) +
+      '<p class="speak">' + esc(line) + (sub || "") + "</p></div>";
   }
 
   function esc(t) {
@@ -368,7 +401,8 @@
               ? "まちがえた " + last.wrongIds.length + " 問から復習もできるよ。"
               : "全問正解だったね。") + "</span>";
     }
-    toon($("greet"), last && last.total ? "idle" : "cheerup", esc(pick("greet", LINES.greet)) + sub);
+    toon($("greet"), last && last.total ? "idle" : "cheerup",
+         pick("greet", LINES.greet), sub, "greet");
   }
 
   // 連続正解はその場で数える。褒め言葉を段階的に変える
@@ -377,13 +411,12 @@
     box.hidden = false;
     if (hit) {
       box.dataset.tone = "ok";
-      var line;
-      if (streak >= 5) { line = streak + " 問連続。これはすごい。"; toon(box, "party", esc(line)); }
-      else if (streak >= 3) { line = streak + " 問連続！のってきたね。"; toon(box, "good", esc(line)); }
-      else { toon(box, "good", esc(pick("good", LINES.good))); }
+      if (streak >= 5)      toon(box, "party", streak + " 問連続。これはすごい。", "", "good");
+      else if (streak >= 3) toon(box, "good",  streak + " 問連続！のってきたね。", "", "good");
+      else                  toon(box, "good",  pick("good", LINES.good), "", "good");
     } else {
       box.dataset.tone = "ng";
-      toon(box, "oops", esc(pick("ng", LINES.ng)));
+      toon(box, "oops", pick("ng", LINES.ng), "", "ng");
     }
   }
 
@@ -442,8 +475,9 @@
       rate >= 60 ? "合格ラインは越えた。もうひと押し。" :
       total === 0 ? "またいつでもどうぞ。" :
                    "ここからここから。まちがえた問題からいこう。";
-    toon($("finale"), mood, esc(cheer) +
-      (total ? '<span class="sub">' + ok + " / " + total + " 問正解（正答率 " + rate + "%）</span>" : ""));
+    toon($("finale"), mood, cheer,
+      total ? '<span class="sub">' + ok + " / " + total + " 問正解（正答率 " + rate + "%）</span>" : "",
+      "finale");
 
     drawBars($("result-bars"), function (a) { return a.q.cat; }, CATS);
     drawBars($("result-level-bars"), function (a) { return LEVEL_NAME[a.q.level]; },
@@ -491,7 +525,9 @@
   $("btn-start").addEventListener("click", startFromSetup);
   $("btn-next").addEventListener("click", next);
   $("btn-quit").addEventListener("click", function () {
-    if (state.answers.length) finish(); else show("setup");
+    // 1問も答えずに中断したら設定画面へ。あいさつは出し直す
+    if (state.answers.length) finish();
+    else { sayGreeting(); show("setup"); }
   });
   $("btn-again").addEventListener("click", startFromSetup);
   $("btn-home").addEventListener("click", function () { buildSetup(); sayGreeting(); show("setup"); });

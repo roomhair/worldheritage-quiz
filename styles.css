@@ -492,11 +492,22 @@ kbd {
   --limb:     #22262C;
   --eye:      #FCFCFA;
   --pupil:    #14171A;
+
+  /* 白いほう */
+  --wool:     #F5F4F0;
+  --wool-ln:  #BDBDB3;
+  --red:      #D63B27;
 }
 @media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) { --fur: #57A8E8; --fur-dim: #3F84BE; --limb: #3A434D; }
+  :root:not([data-theme="light"]) {
+    --fur: #57A8E8; --fur-dim: #3F84BE; --limb: #3A434D;
+    --wool: #EFEEE8; --wool-ln: #9EA09A; --red: #E4503B;
+  }
 }
-:root[data-theme="dark"] { --fur: #57A8E8; --fur-dim: #3F84BE; --limb: #3A434D; }
+:root[data-theme="dark"] {
+  --fur: #57A8E8; --fur-dim: #3F84BE; --limb: #3A434D;
+  --wool: #EFEEE8; --wool-ln: #9EA09A; --red: #E4503B;
+}
 
 .svg-defs { position: absolute; width: 0; height: 0; overflow: hidden; }
 
@@ -520,6 +531,28 @@ kbd {
 .mouth-smile, .mouth-flat, .mouth-wide { display: none; }
 
 .arm, .pupil, .mouth { transition: transform .2s ease; }
+
+/* ── 白いほう ──
+   目が豆粒なので、気分は腕と目の形だけで出す。口はない。 */
+.n-body   { fill: var(--wool); stroke: var(--wool-ln); stroke-width: 1.7; }
+.n-scarf  { fill: none; stroke: var(--wool-ln); stroke-width: 1.4; opacity: .8; }
+.n-eye    { fill: var(--pupil); }
+.n-eye-arc{ fill: none; stroke: var(--pupil); stroke-width: 2.6; stroke-linecap: round; display: none; }
+.n-nose   { fill: var(--red); }
+.n-arm    { stroke: var(--red); stroke-width: 10; }
+
+/* にっこりすると目が弧になる */
+.mascot[data-who="non"][data-mood="good"]  .n-eye,
+.mascot[data-who="non"][data-mood="party"] .n-eye { display: none; }
+.mascot[data-who="non"][data-mood="good"]  .n-eye-arc,
+.mascot[data-who="non"][data-mood="party"] .n-eye-arc { display: block; }
+
+/* まれにしか出てこないので、出たときだけ小さく弾ませる */
+.mascot[data-who="non"] { animation: arrive .45s cubic-bezier(.2, 1.4, .5, 1); }
+@keyframes arrive {
+  from { transform: translateY(9%) scale(.86); opacity: 0; }
+  to   { transform: translateY(0) scale(1); opacity: 1; }
+}
 
 /* ── 気分 ── */
 /* ふつう */
@@ -594,6 +627,9 @@ kbd {
 .react .mascot { width: 54px; height: 58px; }
 .react .speak { border-color: var(--accent); }
 .react .speak::before { border-right-color: var(--accent); }
+.toon:has(.mascot[data-who="non"]) + .speak,
+.toon:has(.mascot[data-who="non"]) .speak { border-color: var(--red); }
+.toon:has(.mascot[data-who="non"]) .speak::before { border-right-color: var(--red); }
 .react[data-tone="ng"] .speak { border-color: var(--wrong); }
 .react[data-tone="ng"] .speak::before { border-right-color: var(--wrong); }
 
@@ -602,7 +638,7 @@ kbd {
 .finale .speak { font-size: .95rem; }
 
 @media (prefers-reduced-motion: reduce) {
-  .mascot[data-mood="party"] { animation: none; }
+  .mascot[data-mood="party"], .mascot[data-who="non"] { animation: none; }
 }
 
 /* ══════════════════════════════════════════════════════════════
