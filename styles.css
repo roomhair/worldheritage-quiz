@@ -419,16 +419,196 @@ kbd {
 .build-line { font-family: var(--mono); letter-spacing: .06em; }
 .build-line:empty { display: none; }
 
-/* ══ 小さい画面 ══ */
-@media (max-width: 560px) {
-  .frow { grid-template-columns: 1fr; gap: 9px; }
+/* ══ 小さい画面 ══
+   指で触る前提にする。タップ領域はおよそ44px以上を確保し、
+   横2カラムの表組みは縦に積む。 */
+@media (max-width: 600px) {
+  .wrap { padding-inline: 18px; }
+  main { padding-block: 30px 52px; }
+  .screen { gap: 28px; }
+
+  /* 項目名を上に、内容を下に積む */
+  .frow { grid-template-columns: 1fr; gap: 10px; padding-block: 18px; }
   .frow-label { padding-top: 0; }
-  .launch .btn-solid, .actions .btn { flex: 1 1 auto; }
-  .choice { grid-template-columns: 1.7rem 1fr; padding-inline: 10px; }
-  .mark { grid-column: 2; padding-top: 6px; }
-  .qhead { gap: 6px 12px; }
+
+  /* 指で押せる大きさに */
+  .chip { padding: 10px 14px; min-height: 44px; font-size: .88rem; align-items: center; }
+  .btn { padding: 13px 22px; min-height: 46px; }
+  .launch { flex-direction: column; align-items: stretch; gap: 16px; }
+  .launch .btn-solid { width: 100%; }
+  .actions { flex-direction: column; }
+  .actions .btn { width: 100%; }
+  .recall .btn-quiet { width: 100%; }
+
+  /* 選択肢：番号を小さめにして本文の幅を稼ぎ、印は本文の下へ回す */
+  .choices { border-top: 0; }
+  .choice {
+    grid-template-columns: 1.6rem 1fr;
+    gap: 0 11px;
+    padding: 16px 4px;
+  }
+  .key { width: 1.5rem; height: 1.5rem; font-size: .78rem; }
+  .mark { grid-column: 2; padding-top: 8px; }
+  .exp { margin-top: 8px; }
+
+  /* 見出し行は折り返す前提でまとめる */
+  .qhead { gap: 4px 12px; margin-top: -14px; }
+  .qno b { font-size: 1.3rem; }
+  .qscore { margin-left: 0; }
+  .qfoot { flex-direction: column; align-items: stretch; gap: 14px; }
+  .qfoot .btn-solid { width: 100%; }
+  .hint { order: 2; text-align: center; }
+
+  .verdict-score b { font-size: 3.1rem; }
+  .foot-in { padding-block: 18px 34px; }
+
+  /* マスコットは小さめに、吹き出しの余白は詰める */
+  .toon { gap: 10px; }
+  .greet .mascot { width: 64px; height: 68px; }
+  .react .mascot { width: 48px; height: 52px; }
+  .finale .mascot { width: 76px; height: 80px; }
+  .speak { padding: 10px 13px; font-size: .87rem; }
+}
+
+/* ごく狭い画面では吹き出しの尻尾を上向きにして縦に積む */
+@media (max-width: 380px) {
+  .toon { flex-direction: column; gap: 8px; }
+  .toon .mascot { margin-left: 6px; }
+  .speak::before, .speak::after {
+    top: auto; right: auto; bottom: 100%; left: 22px;
+    border-right-color: transparent;
+  }
+  .speak::before { border-bottom-color: var(--line-firm); }
+  .speak::after { border-bottom-color: var(--raise); margin: 0 0 -1px 0; }
+  .react .speak::before { border-right-color: transparent; border-bottom-color: var(--accent); }
+  .react[data-tone="ng"] .speak::before { border-right-color: transparent; border-bottom-color: var(--wrong); }
 }
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { transition-duration: .01ms !important; animation-duration: .01ms !important; }
+}
+
+/* ══════════════════════════════════════════════════════════════
+   マスコット
+   青いモコモコの人形。毛並みは feTurbulence の変位で出している。
+   気分（data-mood）で 目・口・腕 が切り替わる。
+   ══════════════════════════════════════════════════════════════ */
+
+:root {
+  --fur:      #4C9FE0;
+  --fur-dim:  #3D86C2;
+  --limb:     #22262C;
+  --eye:      #FCFCFA;
+  --pupil:    #14171A;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) { --fur: #57A8E8; --fur-dim: #3F84BE; --limb: #3A434D; }
+}
+:root[data-theme="dark"] { --fur: #57A8E8; --fur-dim: #3F84BE; --limb: #3A434D; }
+
+.svg-defs { position: absolute; width: 0; height: 0; overflow: hidden; }
+
+.mascot { display: block; flex: none; overflow: visible; }
+.m-body { fill: var(--fur); }
+.arm {
+  fill: none; stroke: var(--limb); stroke-width: 11; stroke-linecap: round;
+  transform-box: fill-box;
+}
+/* 回転軸は肩（胴に接する側の端）に置く */
+.arm-l { transform-origin: 100% 0%; transform: rotate(6deg); }
+.arm-r { transform-origin: 0% 0%;   transform: rotate(-6deg); }
+.ball   { fill: var(--eye); stroke: var(--pupil); stroke-width: 1.1; }
+.pupil  { fill: var(--pupil); }
+.glint  { fill: #fff; }
+.nose   { fill: var(--pupil); }
+.mouth  { fill: var(--pupil); }
+.mouth-smile, .mouth-flat { fill: none; stroke: var(--pupil); stroke-linecap: round; }
+
+/* 既定は「まる口」。ほかの口は隠しておく */
+.mouth-smile, .mouth-flat, .mouth-wide { display: none; }
+
+.arm, .pupil, .mouth { transition: transform .2s ease; }
+
+/* ── 気分 ── */
+/* ふつう */
+.mascot[data-mood="idle"] .pupil { transform: translate(0, 0); }
+
+/* 考えごと：目線を上に、口は小さく */
+.mascot[data-mood="think"] .pupil  { transform: translate(-1.5px, -3px); }
+.mascot[data-mood="think"] .mouth-o { display: none; }
+.mascot[data-mood="think"] .mouth-flat { display: block; }
+.mascot[data-mood="think"] .arm-l { transform: rotate(-4deg); }
+
+/* 正解：にっこり、両手を上げる */
+.mascot[data-mood="good"] .mouth-o { display: none; }
+.mascot[data-mood="good"] .mouth-smile { display: block; }
+.mascot[data-mood="good"] .arm-l { transform: rotate(72deg); }
+.mascot[data-mood="good"] .arm-r { transform: rotate(-72deg); }
+.mascot[data-mood="good"] .pupil { transform: translate(0, -1px); }
+
+/* 誤答：目線を落として、腕は下ろす */
+.mascot[data-mood="oops"] .mouth-o { display: none; }
+.mascot[data-mood="oops"] .mouth-flat { display: block; }
+.mascot[data-mood="oops"] .pupil { transform: translate(0, 2.5px); }
+.mascot[data-mood="oops"] .arm-l { transform: rotate(-16deg); }
+.mascot[data-mood="oops"] .arm-r { transform: rotate(16deg); }
+
+/* 大喜び：口を大きく開けて跳ねる */
+.mascot[data-mood="party"] .mouth-o { display: none; }
+.mascot[data-mood="party"] .mouth-wide { display: block; }
+.mascot[data-mood="party"] .arm-l { transform: rotate(104deg); }
+.mascot[data-mood="party"] .arm-r { transform: rotate(-104deg); }
+.mascot[data-mood="party"] { animation: hop .62s ease-in-out 2; }
+@keyframes hop {
+  0%, 100% { transform: translateY(0); }
+  30%      { transform: translateY(-7%); }
+  60%      { transform: translateY(0); }
+}
+
+/* 励まし：片手を上げる */
+.mascot[data-mood="cheerup"] .mouth-o { display: none; }
+.mascot[data-mood="cheerup"] .mouth-smile { display: block; }
+.mascot[data-mood="cheerup"] .arm-r { transform: rotate(-92deg); }
+
+/* ── 吹き出し ── */
+.speak {
+  position: relative;
+  background: var(--raise);
+  border: 1px solid var(--line-firm);
+  border-radius: 3px;
+  padding: 11px 15px;
+  font-size: .9rem; line-height: 1.7;
+  color: var(--ink);
+  min-width: 0;
+}
+.speak::before, .speak::after {
+  content: ""; position: absolute; top: 17px; right: 100%;
+  border: 7px solid transparent;
+}
+.speak::before { border-right-color: var(--line-firm); }
+.speak::after  { border-right-color: var(--raise); margin-right: -1px; }
+.speak b { color: var(--accent); font-weight: 600; }
+.speak .sub { display: block; margin-top: 3px; font-size: .8rem; color: var(--ink-3); }
+
+.toon { display: flex; align-items: flex-start; gap: 13px; }
+.toon .mascot { width: 62px; height: 66px; margin-top: 2px; }
+.toon .speak { flex: 1; }
+
+/* 設定画面のあいさつは少し大きく */
+.greet .mascot { width: 78px; height: 82px; }
+
+/* 回答後のひとこと */
+.react { padding-top: 2px; }
+.react .mascot { width: 54px; height: 58px; }
+.react .speak { border-color: var(--accent); }
+.react .speak::before { border-right-color: var(--accent); }
+.react[data-tone="ng"] .speak { border-color: var(--wrong); }
+.react[data-tone="ng"] .speak::before { border-right-color: var(--wrong); }
+
+/* 結果の講評 */
+.finale .mascot { width: 96px; height: 102px; }
+.finale .speak { font-size: .95rem; }
+
+@media (prefers-reduced-motion: reduce) {
+  .mascot[data-mood="party"] { animation: none; }
 }

@@ -31,6 +31,7 @@
     idx: 0,
     answers: [],   // {q, picked}
     order: [],     // 表示位置 → q.choices のインデックス
+    streak: 0,     // 連続正解
     locked: false
   };
 
@@ -178,6 +179,7 @@
     state.queue = list;
     state.idx = 0;
     state.answers = [];
+    state.streak = 0;
     $("q-total").textContent = list.length;
     show("quiz");
     render();
@@ -205,6 +207,7 @@
     $("q-level-txt").textContent = LEVEL_NAME[q.level];
     $("q-text").textContent = q.q;
     $("q-note").hidden = true;
+    $("react").hidden = true;
     $("btn-next").hidden = true;
     $("hint").hidden = false;
     $("btn-next").textContent = state.idx === state.queue.length - 1 ? "結果を見る" : "次の問題へ";
@@ -256,6 +259,10 @@
       b.querySelector(".label").appendChild(exp);
     });
 
+    var hit = picked === q.a;
+    state.streak = hit ? state.streak + 1 : 0;
+    reactTo(hit, state.streak);
+
     if (q.note) { $("q-note").textContent = q.note; $("q-note").hidden = false; }
     $("score-line").innerHTML = "正答 <b>" + correctCount() + "</b>";
     $("progress-bar").style.width = ((state.idx + 1) / state.queue.length * 100) + "%";
@@ -272,6 +279,112 @@
     if (state.idx >= state.queue.length - 1) { finish(); return; }
     state.idx++;
     render();
+  }
+
+
+  /* ═══════ マスコット ═══════
+     青いモコモコの人形。褒めたり励ましたりする役。
+     SVGを1か所で組み立て、気分（mood）と台詞だけ差し替える。 */
+
+  var MOODS = ["idle", "think", "good", "oops", "party", "cheerup"];
+
+  function mascotSVG(mood) {
+    return '<svg class="mascot" viewBox="0 0 100 106" data-mood="' + mood + '" role="img" aria-hidden="true">' +
+      // 胴（毛のフィルタ）
+      '<ellipse class="m-body" cx="50" cy="62" rx="30" ry="35" filter="url(#fur)"/>' +
+      // 腕は胴の手前に描く。太い線で引くと小さく表示しても形が残る
+      '<path class="arm arm-l" d="M26 58Q12 66 7 79"/>' +
+      '<path class="arm arm-r" d="M74 58Q88 66 93 79"/>' +
+      // 顔
+      '<g class="eye">' +
+        '<circle class="ball" cx="39" cy="30" r="12.5"/>' +
+        '<circle class="pupil" cx="41" cy="32" r="5.2"/>' +
+        '<circle class="glint" cx="38.6" cy="29.6" r="1.6"/>' +
+      '</g>' +
+      '<g class="eye">' +
+        '<circle class="ball" cx="62" cy="28" r="12.5"/>' +
+        '<circle class="pupil" cx="64" cy="30" r="5.2"/>' +
+        '<circle class="glint" cx="61.6" cy="27.6" r="1.6"/>' +
+      '</g>' +
+      '<ellipse class="nose" cx="50" cy="48" rx="4.7" ry="5.8"/>' +
+      '<path class="mouth mouth-o" d="M42 59c3 7 13 7 16 0-5 3-11 3-16 0z"/>' +
+      '<path class="mouth mouth-wide" d="M39 57c4 13 18 13 22 0-7 5-15 5-22 0z"/>' +
+      '<path class="mouth mouth-smile" d="M40 57q10 12 20 0" stroke-width="3.4"/>' +
+      '<path class="mouth mouth-flat" d="M44 60h12" stroke-width="3.2"/>' +
+    '</svg>';
+  }
+
+  // 同じ台詞が続かないように、直前に出したものを覚えておく
+  var lastLine = {};
+  function pick(key, lines) {
+    if (lines.length === 1) return lines[0];
+    var c;
+    do { c = lines[Math.floor(Math.random() * lines.length)]; } while (c === lastLine[key]);
+    lastLine[key] = c;
+    return c;
+  }
+
+  var LINES = {
+    greet: [
+      "さあ、はじめよう。",
+      "今日はどこからやる？",
+      "少しずつでいい。積み上げよう。",
+      "覚えるより、まず間違えるところからだよ。"
+    ],
+    good: [
+      "やった、正解！",
+      "そう、それ！",
+      "よく覚えてたね。",
+      "いいね、その調子。",
+      "ばっちり。",
+      "おみごと！"
+    ],
+    ng: [
+      "おしい！ここ、間違えやすいところ。",
+      "ドンマイ。解説を読めば次は取れる。",
+      "いま覚えれば大丈夫。",
+      "ここは差がつくところ。いこう。",
+      "よくある引っかけだよ。覚えておこう。"
+    ]
+  };
+
+  // toon = マスコット＋吹き出し。ひとつの部品として使い回す
+  function toon(box, mood, html) {
+    box.innerHTML = '<div class="toon">' + mascotSVG(mood) + '<p class="speak">' + html + "</p></div>";
+  }
+
+  function esc(t) {
+    return String(t).replace(/[&<>]/g, function (c) {
+      return { "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c];
+    });
+  }
+
+  function sayGreeting() {
+    var last = load();
+    var sub = "";
+    if (last && last.total) {
+      sub = '<span class="sub">前回は ' + last.correct + " / " + last.total + " 問。" +
+            ((last.wrongIds || []).length
+              ? "まちがえた " + last.wrongIds.length + " 問から復習もできるよ。"
+              : "全問正解だったね。") + "</span>";
+    }
+    toon($("greet"), last && last.total ? "idle" : "cheerup", esc(pick("greet", LINES.greet)) + sub);
+  }
+
+  // 連続正解はその場で数える。褒め言葉を段階的に変える
+  function reactTo(hit, streak) {
+    var box = $("react");
+    box.hidden = false;
+    if (hit) {
+      box.dataset.tone = "ok";
+      var line;
+      if (streak >= 5) { line = streak + " 問連続。これはすごい。"; toon(box, "party", esc(line)); }
+      else if (streak >= 3) { line = streak + " 問連続！のってきたね。"; toon(box, "good", esc(line)); }
+      else { toon(box, "good", esc(pick("good", LINES.good))); }
+    } else {
+      box.dataset.tone = "ng";
+      toon(box, "oops", esc(pick("ng", LINES.ng)));
+    }
   }
 
   /* ---------- 結果 ---------- */
@@ -322,6 +435,16 @@
     $("result-verdict").textContent = verdict;
     $("result-comment").textContent = comment;
 
+    var mood = rate >= 90 ? "party" : rate >= 75 ? "good" : rate >= 60 ? "idle" : "cheerup";
+    var cheer =
+      rate >= 90 ? "文句なし。よくやった！" :
+      rate >= 75 ? "いい線いってる。あと少し！" :
+      rate >= 60 ? "合格ラインは越えた。もうひと押し。" :
+      total === 0 ? "またいつでもどうぞ。" :
+                   "ここからここから。まちがえた問題からいこう。";
+    toon($("finale"), mood, esc(cheer) +
+      (total ? '<span class="sub">' + ok + " / " + total + " 問正解（正答率 " + rate + "%）</span>" : ""));
+
     drawBars($("result-bars"), function (a) { return a.q.cat; }, CATS);
     drawBars($("result-level-bars"), function (a) { return LEVEL_NAME[a.q.level]; },
              [LEVEL_NAME[1], LEVEL_NAME[2], LEVEL_NAME[3]]);
@@ -371,7 +494,7 @@
     if (state.answers.length) finish(); else show("setup");
   });
   $("btn-again").addEventListener("click", startFromSetup);
-  $("btn-home").addEventListener("click", function () { buildSetup(); show("setup"); });
+  $("btn-home").addEventListener("click", function () { buildSetup(); sayGreeting(); show("setup"); });
   $("btn-review-wrong").addEventListener("click", function () {
     reviewWrong(state.answers.filter(function (a) { return a.picked !== a.q.a; })
       .map(function (a) { return a.q.id; }));
@@ -396,4 +519,5 @@
   });
 
   buildSetup();
+  sayGreeting();
 })();
