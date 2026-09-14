@@ -168,7 +168,6 @@ main { padding-block: 44px 64px; }
   transition: color .12s, border-color .12s, background .12s;
 }
 .chip .n { font-size: .72em; opacity: .65; }
-.chip:hover { color: var(--accent); border-color: var(--accent); }
 /* 単一選択（難易度・出題数・出題順）＝ひとつだけ塗る */
 .chip[aria-checked="true"] {
   background: var(--accent); border-color: var(--accent); color: var(--on-accent);
@@ -180,7 +179,6 @@ main { padding-block: 44px 64px; }
   background: var(--accent-2); border-color: var(--accent); color: var(--accent);
   font-weight: 500;
 }
-.chip[aria-pressed="true"]:hover { background: transparent; }
 .chip[aria-pressed="true"] .n { opacity: .75; }
 
 .launch {
@@ -203,19 +201,15 @@ main { padding-block: 44px 64px; }
   transition: background .12s, color .12s, border-color .12s, opacity .12s;
 }
 .btn-solid { background: var(--accent); color: var(--on-accent); font-weight: 600; }
-.btn-solid:hover { opacity: .86; }
 .btn-solid:disabled { opacity: .35; cursor: not-allowed; }
 .btn-quiet { background: transparent; border-color: var(--line-firm); color: var(--ink-2); }
-.btn-quiet:hover { border-color: var(--accent); color: var(--accent); }
 .btn-quiet:disabled { opacity: .35; cursor: not-allowed; border-color: var(--line); }
-.btn-quiet:disabled:hover { border-color: var(--line); color: var(--ink-2); }
 .btn-text {
   background: none; border: 0; padding: 4px 0;
   font-size: .78rem; color: var(--ink-3);
   text-decoration: underline; text-underline-offset: 4px;
   text-decoration-thickness: 1px;
 }
-.btn-text:hover { color: var(--wrong); }
 
 :where(button, [tabindex], a):focus-visible {
   outline: 2px solid var(--accent); outline-offset: 3px;
@@ -298,7 +292,6 @@ main { padding-block: 44px 64px; }
   cursor: pointer;
   transition: background .12s, border-color .12s;
 }
-.choice:hover:not(:disabled) { background: var(--sink); border-left-color: var(--line-firm); }
 .choice:disabled { cursor: default; color: var(--ink); opacity: 1; -webkit-text-fill-color: currentColor; }
 
 .key {
@@ -309,7 +302,6 @@ main { padding-block: 44px 64px; }
   border: 1px solid var(--line-firm); border-radius: 50%;
   transition: color .12s, border-color .12s, background .12s;
 }
-.choice:hover:not(:disabled) .key { color: var(--accent); border-color: var(--accent); }
 
 .label { line-height: 1.8; }
 .mark {
@@ -611,4 +603,31 @@ kbd {
 
 @media (prefers-reduced-motion: reduce) {
   .mascot[data-mood="party"] { animation: none; }
+}
+
+/* ══════════════════════════════════════════════════════════════
+   ホバー
+   タッチ端末では :hover がタップ後も貼りつき、最後に触った要素だけ
+   別の見た目のまま残ってしまう。マウスなど本物のホバーがある環境に
+   限って適用する。
+   ══════════════════════════════════════════════════════════════ */
+@media (hover: hover) and (pointer: fine) {
+  .chip:hover { color: var(--accent); border-color: var(--accent); }
+  .chip[aria-pressed="true"]:hover { background: transparent; }
+
+  .btn-solid:hover { opacity: .86; }
+  .btn-quiet:hover { border-color: var(--accent); color: var(--accent); }
+  .btn-quiet:disabled:hover { border-color: var(--line); color: var(--ink-2); }
+  .btn-text:hover { color: var(--wrong); }
+
+  .choice:hover:not(:disabled) { background: var(--sink); border-left-color: var(--line-firm); }
+  .choice:hover:not(:disabled) .key { color: var(--accent); border-color: var(--accent); }
+}
+
+/* 押した瞬間の手応えは、ホバーではなく :active で返す（タッチでも効く） */
+.chip:active { transform: scale(.97); }
+.btn-solid:active:not(:disabled), .btn-quiet:active:not(:disabled) { transform: scale(.99); }
+.choice:active:not(:disabled) { background: var(--sink); }
+@media (prefers-reduced-motion: reduce) {
+  .chip:active, .btn-solid:active, .btn-quiet:active { transform: none; }
 }
