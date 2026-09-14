@@ -7,10 +7,24 @@
   BANK.forEach(function (q) { if (CATS.indexOf(q.cat) < 0) CATS.push(q.cat); });
 
   var STORE_KEY = "wh2-quiz-v1";
-  var COUNTS = [10, 20, 30, 0]; // 0 = すべて
+  var COUNTS = [10, 20, 30, 50, 0]; // 0 = すべて
+  var LEVELS = [
+    { v: 0, label: "すべて" },
+    { v: 1, label: "簡単" },
+    { v: 2, label: "普通" },
+    { v: 3, label: "難しい" }
+  ];
+  var LEVEL_NAME = { 1: "簡単", 2: "普通", 3: "難しい" };
+  var LEVEL_HELP = {
+    0: "全難易度から出題します。",
+    1: "基本用語と代表的な遺産。まずはここから。",
+    2: "登録の経緯や基準の中身まで踏み込みます。",
+    3: "年号・件数・勧告の経緯など、合格を確実にする細部。"
+  };
 
   var state = {
     cats: CATS.slice(),
+    level: 0,
     count: 20,
     order: "shuffle",
     queue: [],
@@ -62,6 +76,26 @@
       box.appendChild(b);
     });
 
+    var lbox = $("level-chips");
+    lbox.innerHTML = "";
+    LEVELS.forEach(function (L) {
+      var b = document.createElement("button");
+      b.type = "button";
+      b.className = "chip";
+      b.id = "level-" + L.v;
+      b.setAttribute("role", "radio");
+      b.setAttribute("aria-checked", L.v === state.level ? "true" : "false");
+      b.innerHTML = L.label + '<span class="n"></span>';
+      b.addEventListener("click", function () {
+        state.level = L.v;
+        LEVELS.forEach(function (o) {
+          $("level-" + o.v).setAttribute("aria-checked", o.v === L.v ? "true" : "false");
+        });
+        updateTally();
+      });
+      lbox.appendChild(b);
+    });
+
     var cbox = $("count-chips");
     cbox.innerHTML = "";
     COUNTS.forEach(function (c) {
@@ -103,13 +137,28 @@
   }
 
   function pool() {
-    return BANK.filter(function (q) { return state.cats.indexOf(q.cat) >= 0; });
+    return BANK.filter(function (q) {
+      return state.cats.indexOf(q.cat) >= 0 && (state.level === 0 || q.level === state.level);
+    });
+  }
+
+  // 選択中のカテゴリの中で、その難易度が何問あるか
+  function countAtLevel(lv) {
+    return BANK.filter(function (q) {
+      return state.cats.indexOf(q.cat) >= 0 && (lv === 0 || q.level === lv);
+    }).length;
   }
   function plannedCount() {
     var p = pool().length;
     return state.count === 0 ? p : Math.min(state.count, p);
   }
   function updateTally() {
+    LEVELS.forEach(function (L) {
+      var el = $("level-" + L.v);
+      if (el) el.querySelector(".n").textContent = countAtLevel(L.v);
+    });
+    $("level-help").textContent = LEVEL_HELP[state.level];
+
     var n = plannedCount();
     $("setup-tally").innerHTML = "出題：<b>" + n + "</b>問<span> ／ 対象 " + pool().length + "問</span>";
     $("btn-start").disabled = n === 0;
@@ -148,6 +197,8 @@
     $("progress-bar").style.width = (state.idx / state.queue.length * 100) + "%";
     $("score-line").innerHTML = "正答 <b>" + correctCount() + "</b>";
     $("q-cat").textContent = q.cat;
+    $("q-level").textContent = LEVEL_NAME[q.level];
+    $("q-level").dataset.level = q.level;
     $("q-text").textContent = q.q;
     $("q-note").hidden = true;
     $("btn-next").hidden = true;
@@ -221,6 +272,31 @@
   }
 
   /* ---------- 結果 ---------- */
+  // 出題した分だけを、指定の並び順で集計してバーにする
+  function drawBars(box, keyOf, order) {
+    var group = {};
+    state.answers.forEach(function (a) {
+      var k = keyOf(a);
+      var g = group[k] || (group[k] = { n: 0, ok: 0 });
+      g.n++;
+      if (a.picked === a.q.a) g.ok++;
+    });
+    box.innerHTML = "";
+    order.forEach(function (k) {
+      var g = group[k];
+      if (!g) return; // 出題されなかった区分は並べない
+      var pct = Math.round(g.ok / g.n * 100);
+      var li = document.createElement("li");
+      li.className = "bar-row" + (pct < 60 ? " is-weak" : "");
+      li.innerHTML =
+        '<span class="bar-name"></span>' +
+        '<span class="bar-num">' + g.ok + "/" + g.n + "　" + pct + '%</span>' +
+        '<span class="bar-track"><span class="bar-fill" style="width:' + pct + '%"></span></span>';
+      li.querySelector(".bar-name").textContent = k;
+      box.appendChild(li);
+    });
+  }
+
   function finish() {
     var total = state.answers.length;
     var ok = correctCount();
@@ -243,27 +319,9 @@
     $("result-verdict").textContent = verdict;
     $("result-comment").textContent = comment;
 
-    // カテゴリ別
-    var byCat = {};
-    state.answers.forEach(function (a) {
-      var c = byCat[a.q.cat] || (byCat[a.q.cat] = { n: 0, ok: 0 });
-      c.n++;
-      if (a.picked === a.q.a) c.ok++;
-    });
-    var bars = $("result-bars");
-    bars.innerHTML = "";
-    Object.keys(byCat).forEach(function (cat) {
-      var c = byCat[cat];
-      var pct = Math.round(c.ok / c.n * 100);
-      var li = document.createElement("li");
-      li.className = "bar-row" + (pct < 60 ? " is-weak" : "");
-      li.innerHTML =
-        '<span class="bar-name"></span>' +
-        '<span class="bar-num">' + c.ok + "/" + c.n + "　" + pct + '%</span>' +
-        '<span class="bar-track"><span class="bar-fill" style="width:' + pct + '%"></span></span>';
-      li.querySelector(".bar-name").textContent = cat;
-      bars.appendChild(li);
-    });
+    drawBars($("result-bars"), function (a) { return a.q.cat; }, CATS);
+    drawBars($("result-level-bars"), function (a) { return LEVEL_NAME[a.q.level]; },
+             [LEVEL_NAME[1], LEVEL_NAME[2], LEVEL_NAME[3]]);
 
     // 誤答リスト
     var wrong = state.answers.filter(function (a) { return a.picked !== a.q.a; });
@@ -289,6 +347,7 @@
     save({
       total: total,
       correct: ok,
+      level: state.level,
       wrongIds: wrong.map(function (a) { return a.q.id; }),
       at: Date.now()
     });

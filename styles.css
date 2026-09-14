@@ -160,6 +160,7 @@ main { padding-block: 32px 56px; }
 }
 .field-row { display: flex; flex-wrap: wrap; gap: 18px 32px; }
 .field-row .field { flex: 1 1 14rem; }
+.field-row .field:first-child { flex: 2 1 21rem; }  /* 出題数は5つ並ぶので幅を多めに */
 
 .chips { display: flex; flex-wrap: wrap; gap: 7px; }
 .chip {
@@ -176,6 +177,11 @@ main { padding-block: 32px 56px; }
   background: var(--accent); border-color: var(--accent); color: var(--accent-ink);
 }
 .chip[aria-pressed="true"] .n, .chip[aria-checked="true"] .n { opacity: .85; }
+
+.field-help {
+  margin: 0; font-size: .78rem; line-height: 1.6; color: var(--ink-faint);
+  min-height: 1.6em;
+}
 
 .setup-foot {
   display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between;
@@ -232,6 +238,7 @@ main { padding-block: 32px 56px; }
   box-shadow: var(--shadow);
   display: flex; flex-direction: column; gap: 18px;
 }
+.tags { margin: 0; display: flex; flex-wrap: wrap; gap: 6px; }
 .tag {
   margin: 0; align-self: flex-start;
   font-family: var(--mono); font-size: .66rem; letter-spacing: .18em;
@@ -239,6 +246,11 @@ main { padding-block: 32px 56px; }
   border: 1px solid var(--accent); border-radius: 100px;
   padding: 2px 11px;
 }
+
+/* 難易度は段階が色で分かるように。緑青→藍→弁柄。 */
+.tag-level { color: var(--ok); border-color: var(--ok); }
+.tag-level[data-level="2"] { color: var(--accent); border-color: var(--accent); }
+.tag-level[data-level="3"] { color: var(--ng); border-color: var(--ng); }
 .q-text {
   font-family: var(--serif); font-weight: 500;
   font-size: clamp(1.08rem, 3.2vw, 1.25rem); line-height: 1.85;

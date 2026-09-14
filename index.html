@@ -19,7 +19,7 @@
         <span>一問一答トレーニング</span>
       </span>
     </div>
-    <p class="masthead-meta"><span id="bank-count">60</span>問収録 ／ 全選択肢に解説つき</p>
+    <p class="masthead-meta"><span id="bank-count">150</span>問収録 ／ 全選択肢に解説つき</p>
   </div>
 </header>
 
@@ -29,13 +29,19 @@
   <section id="screen-setup" class="screen">
     <div class="lede">
       <h1>出題範囲をえらぶ</h1>
-      <p>4択に答えると、選ばなかった選択肢もふくめて<strong>4つすべての解説</strong>が開きます。誤答の理由まで読むのが2級対策の近道です。</p>
+      <p>4択に答えると、選ばなかった選択肢もふくめて<strong>4つすべての解説</strong>が開きます。誤答の理由まで読むのが2級対策の近道です。カテゴリと難易度でしぼりこめます。</p>
     </div>
 
     <div class="panel">
       <fieldset class="field">
         <legend>カテゴリ</legend>
         <div class="chips" id="cat-chips"></div>
+      </fieldset>
+
+      <fieldset class="field">
+        <legend>難易度</legend>
+        <div class="chips" id="level-chips" role="radiogroup" aria-label="難易度"></div>
+        <p class="field-help" id="level-help"></p>
       </fieldset>
 
       <div class="field-row">
@@ -78,7 +84,10 @@
     </div>
 
     <article class="card question-card">
-      <p class="tag" id="q-cat">条約と理念</p>
+      <p class="tags">
+        <span class="tag" id="q-cat">条約と理念</span>
+        <span class="tag tag-level" id="q-level">普通</span>
+      </p>
       <h2 class="q-text" id="q-text"></h2>
       <ol class="choices" id="choices"></ol>
       <p class="note" id="q-note" hidden></p>
@@ -104,6 +113,11 @@
       <ul class="bars" id="result-bars"></ul>
     </div>
 
+    <div class="panel">
+      <h2 class="panel-title">難易度別</h2>
+      <ul class="bars" id="result-level-bars"></ul>
+    </div>
+
     <div class="panel" id="review-panel">
       <h2 class="panel-title">まちがえた問題 <span class="panel-count" id="wrong-count">0</span></h2>
       <ul class="review" id="review-list"></ul>
@@ -119,7 +133,7 @@
 </main>
 
 <footer class="foot wrap">
-  <p>世界遺産検定2級 一問一答 ／ 全<span class="mono" id="foot-count">60</span>問・全選択肢解説つき</p>
+  <p>世界遺産検定2級 一問一答 ／ 全<span class="mono" id="foot-count">150</span>問・3段階の難易度・全選択肢解説つき</p>
   <p class="build-line"><span id="build"></span></p>
 </footer>
 
