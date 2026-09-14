@@ -355,6 +355,8 @@ main { padding-block: 32px 56px; }
   font-size: .74rem; color: var(--ink-faint);
 }
 .foot p { margin: 0; }
+.build-line { font-family: var(--mono); font-size: .68rem; letter-spacing: .04em; opacity: .8; }
+.build-line:empty { display: none; }
 
 @media (max-width: 460px) {
   .card { padding: 20px 16px; }

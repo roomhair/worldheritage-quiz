@@ -16,9 +16,16 @@
 ## 使い方
 
 ```
-git clone <this repo>
+git clone https://github.com/roomhair/worldheritage-quiz
 cd worldheritage-quiz
 open index.html          # macOS。Windows は start index.html
+```
+
+配布・共有には `dist/worldheritage-quiz.html` を使う。CSS と JS を埋め込んだ1ファイル版で、
+ダブルクリックするだけで動く。`data/questions.js` などを編集したら作り直すこと:
+
+```
+node build-standalone.js
 ```
 
 ## ファイル構成
@@ -29,6 +36,8 @@ open index.html          # macOS。Windows は start index.html
 | `styles.css` | デザイントークンとスタイル |
 | `app.js` | 出題・採点・復習ロジック |
 | `data/questions.js` | 設問データ（`window.WH_QUESTIONS`） |
+| `build-standalone.js` | 1ファイル版 `dist/worldheritage-quiz.html` の生成 |
+| `.github/workflows/pages.yml` | 設問データの検証と GitHub Pages へのデプロイ |
 
 ## 設問を追加・編集する
 
@@ -51,6 +60,36 @@ open index.html          # macOS。Windows は start index.html
 ```
 
 新しい `cat` を書けば、カテゴリのチップは自動的に増えます。
+
+## 公開（GitHub Pages）
+
+`.github/workflows/pages.yml` がリポジトリの中身をそのまま GitHub Pages にデプロイする。
+公開URLは:
+
+```
+https://roomhair.github.io/worldheritage-quiz/
+```
+
+公開するには、先に **Settings → Pages → Build and deployment → Source** を
+**GitHub Actions** にしておく必要がある（リポジトリはすでに public）。
+
+ワークフローは `build`（全ブランチ）と `deploy`（`main` のみ）に分かれている。
+Pages 環境は既定でデフォルトブランチからのデプロイしか許可しないため、
+実際に公開するには変更を `main` にマージする。
+
+`build` ジョブは次の3つを行う。
+
+1. **設問データの検証** — id の重複、選択肢がちょうど4つあるか、
+   **4つすべてに解説 `e` があるか**、`a` が 0〜3 の整数か。
+   解説の付け忘れはここで落ちる。
+2. **1ファイル版の同期確認** — `dist/worldheritage-quiz.html` がソースから作り直された
+   状態か。`data/questions.js` などを編集したら `node build-standalone.js` を実行して
+   コミットすること。
+3. **キャッシュ対策** — 配信するHTMLの `styles.css` / `app.js` / `data/questions.js` の
+   参照にコミットSHAを付ける（`data/questions.js?v=559c1231` のように）。ブラウザが
+   古い css/js を掴んだまま新しいHTMLと混ざるのを防ぐためで、**リポジトリのファイルは
+   相対パスのまま**なので `index.html` を直接開く使い方は変わらない。
+   フッターにそのSHAを出しているので、表示中のページがどのビルドか判別できる。
 
 ## 注意
 
