@@ -30,6 +30,7 @@
     queue: [],
     idx: 0,
     answers: [],   // {q, picked}
+    order: [],     // 表示位置 → q.choices のインデックス
     locked: false
   };
 
@@ -160,7 +161,7 @@
     $("level-help").textContent = LEVEL_HELP[state.level];
 
     var n = plannedCount();
-    $("setup-tally").innerHTML = "出題：<b>" + n + "</b>問<span> ／ 対象 " + pool().length + "問</span>";
+    $("setup-tally").innerHTML = "出題 <b>" + n + "</b> 問<span> ／ 対象 " + pool().length + " 問</span>";
     $("btn-start").disabled = n === 0;
   }
 
@@ -192,13 +193,16 @@
   function render() {
     var q = state.queue[state.idx];
     state.locked = false;
+    // 正解の位置を覚えてしまわないよう、表示順は毎回シャッフルする。
+    // order[表示位置] = データ上のインデックス。
+    state.order = shuffle(q.choices.map(function (c, i) { return i; }));
 
     $("q-index").textContent = state.idx + 1;
     $("progress-bar").style.width = (state.idx / state.queue.length * 100) + "%";
     $("score-line").innerHTML = "正答 <b>" + correctCount() + "</b>";
     $("q-cat").textContent = q.cat;
-    $("q-level").textContent = LEVEL_NAME[q.level];
     $("q-level").dataset.level = q.level;
+    $("q-level-txt").textContent = LEVEL_NAME[q.level];
     $("q-text").textContent = q.q;
     $("q-note").hidden = true;
     $("btn-next").hidden = true;
@@ -207,20 +211,18 @@
 
     var ol = $("choices");
     ol.innerHTML = "";
-    q.choices.forEach(function (c, i) {
+    state.order.forEach(function (src, pos) {
       var li = document.createElement("li");
       var b = document.createElement("button");
       b.type = "button";
       b.className = "choice";
-      b.dataset.i = i;
+      b.dataset.src = src;
       b.innerHTML =
-        '<span class="choice-top">' +
-          '<span class="choice-key">' + (i + 1) + "</span>" +
-          '<span class="choice-label"></span>' +
-          '<span class="choice-verdict"></span>' +
-        "</span>";
-      b.querySelector(".choice-label").textContent = c.t;
-      b.addEventListener("click", function () { answer(i); });
+        '<span class="key">' + (pos + 1) + "</span>" +
+        '<span class="label"></span>' +
+        '<span class="mark"></span>';
+      b.querySelector(".label").textContent = q.choices[src].t;
+      b.addEventListener("click", function () { answer(src); });
       li.appendChild(b);
       ol.appendChild(li);
     });
@@ -234,23 +236,24 @@
     state.answers.push({ q: q, picked: picked });
 
     Array.prototype.forEach.call($("choices").querySelectorAll(".choice"), function (b) {
-      var i = Number(b.dataset.i);
+      var i = Number(b.dataset.src);
       b.disabled = true;
-      var verdict = b.querySelector(".choice-verdict");
+      var mark = b.querySelector(".mark");
+      // 色だけに頼らず、記号（CSSの::before）と文字の両方で正誤を示す
       if (i === q.a) {
         b.classList.add("is-correct");
-        verdict.textContent = "正解";
+        mark.textContent = picked === q.a ? "正解・選択" : "正解";
       } else if (i === picked) {
-        b.classList.add("is-picked-wrong");
-        verdict.textContent = "あなたの回答";
+        b.classList.add("is-wrong");
+        mark.textContent = "あなたの回答";
       } else {
         b.classList.add("is-rest");
-        verdict.textContent = "誤り";
+        mark.textContent = "誤り";
       }
-      var exp = document.createElement("p");
-      exp.className = "choice-exp";
+      var exp = document.createElement("span");
+      exp.className = "exp";
       exp.textContent = q.choices[i].e;
-      b.appendChild(exp);
+      b.querySelector(".label").appendChild(exp);
     });
 
     if (q.note) { $("q-note").textContent = q.note; $("q-note").hidden = false; }
@@ -290,7 +293,7 @@
       li.className = "bar-row" + (pct < 60 ? " is-weak" : "");
       li.innerHTML =
         '<span class="bar-name"></span>' +
-        '<span class="bar-num">' + g.ok + "/" + g.n + "　" + pct + '%</span>' +
+        '<span class="bar-num">' + g.ok + " / " + g.n + "　" + pct + '%</span>' +
         '<span class="bar-track"><span class="bar-fill" style="width:' + pct + '%"></span></span>';
       li.querySelector(".bar-name").textContent = k;
       box.appendChild(li);
@@ -325,7 +328,7 @@
 
     // 誤答リスト
     var wrong = state.answers.filter(function (a) { return a.picked !== a.q.a; });
-    $("wrong-count").textContent = wrong.length + "問";
+    $("wrong-count").textContent = wrong.length + " 問";
     var list = $("review-list");
     list.innerHTML = "";
     if (!wrong.length) {
@@ -382,9 +385,11 @@
     if ($("screen-quiz").hidden) return;
     if (e.metaKey || e.ctrlKey || e.altKey) return;
     if (!state.locked && e.key >= "1" && e.key <= "4") {
-      var i = Number(e.key) - 1;
-      var q = state.queue[state.idx];
-      if (q && i < q.choices.length) { e.preventDefault(); answer(i); }
+      var pos = Number(e.key) - 1;
+      if (state.order && pos < state.order.length) {
+        e.preventDefault();
+        answer(state.order[pos]);
+      }
     } else if (state.locked && (e.key === "Enter" || e.key === " ")) {
       e.preventDefault(); next();
     }
