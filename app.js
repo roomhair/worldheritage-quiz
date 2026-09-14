@@ -286,10 +286,21 @@
      青いモコモコの人形。褒めたり励ましたりする役。
      SVGを1か所で組み立て、気分（mood）と台詞だけ差し替える。 */
 
-  // 2体いる。青いのが普段の相棒、白いのは 1/RARE の確率でだけ出てくる。
-  var RARE = 20;
+  // 3体いる。青いのが普段の相棒で、あとの2体はたまにしか出てこない。
+  // 珍しい順に判定し、どれにも当たらなければ青。率を変えるならここだけ直す。
+  var RARE = [
+    { who: "gent", p: 1 / 100 },   // 灰色のシルクハット
+    { who: "non",  p: 1 / 20 }     // 白いモコモコ
+  ];
 
-  function rollWho() { return Math.floor(Math.random() * RARE) === 0 ? "non" : "sun"; }
+  function rollWho() {
+    var r = Math.random(), acc = 0;
+    for (var i = 0; i < RARE.length; i++) {
+      acc += RARE[i].p;
+      if (r < acc) return RARE[i].who;
+    }
+    return "sun";
+  }
 
   // 青いモコモコ
   function sunSVG() {
@@ -330,17 +341,46 @@
       '<circle class="n-nose" cx="50" cy="50" r="6"/>';
   }
 
-  function mascotSVG(mood, who) {
-    return '<svg class="mascot" viewBox="0 0 100 106" data-mood="' + mood + '" data-who="' + who +
-      '" role="img" aria-hidden="true">' + (who === "non" ? nonSVG() : sunSVG()) + '</svg>';
+  // 灰色のふさふさ。シルクハット、長い黒の手足、とじた波形の目。
+  function gentSVG() {
+    return '<g class="g-leg">' +
+        '<path d="M43 84v12"/><path d="M57 84v12"/>' +
+      '</g>' +
+      '<ellipse class="g-shoe" cx="39" cy="99" rx="10" ry="4.6"/>' +
+      '<ellipse class="g-shoe" cx="61" cy="99" rx="10" ry="4.6"/>' +
+      '<path class="g-body" d="M50 20c-11 0-16 8-17 19l-5 40c-1 8 8 13 22 13s23-5 22-13l-5-40c-1-11-6-19-17-19z" filter="url(#fur)"/>' +
+      // 腕と手はひとつのグループにする。別々だと腕を上げたとき手が置き去りになる
+      '<g class="limb limb-l">' +
+        '<path class="g-arm" d="M33 40Q20 46 10 56"/>' +
+        '<circle class="g-hand" cx="9" cy="57" r="6.4"/>' +
+      '</g>' +
+      '<g class="limb limb-r">' +
+        '<path class="g-arm" d="M67 40Q80 46 90 56"/>' +
+        '<circle class="g-hand" cx="91" cy="57" r="6.4"/>' +
+      '</g>' +
+      '<g class="g-hat">' +
+        '<rect class="g-crown" x="40" y="2" width="20" height="15" rx="1.5"/>' +
+        '<ellipse class="g-brim" cx="50" cy="17.5" rx="16" ry="3.4"/>' +
+      '</g>' +
+      '<path class="g-eye" d="M38 34q2.2-3.4 4.4 0t4.4 0"/>' +
+      '<path class="g-eye" d="M53.2 34q2.2-3.4 4.4 0t4.4 0"/>' +
+      '<circle class="g-nose" cx="50" cy="44" r="4.6"/>';
   }
 
-  // 同じ台詞が続かないように、直前に出したものを覚えておく
+  function mascotSVG(mood, who) {
+    var art = who === "non" ? nonSVG() : who === "gent" ? gentSVG() : sunSVG();
+    return '<svg class="mascot" viewBox="0 0 100 106" data-mood="' + mood + '" data-who="' + who +
+      '" role="img" aria-hidden="true">' + art + '</svg>';
+  }
+
+  // 同じ台詞が続かないように、直前に出したものを覚えておく。
+  // 引き直しではなく候補から除いて選ぶ。引き直し方式だと、乱数が偏ったときに
+  // ループから抜けられなくなる可能性がある。
   var lastLine = {};
   function pick(key, lines) {
-    if (lines.length === 1) return lines[0];
-    var c;
-    do { c = lines[Math.floor(Math.random() * lines.length)]; } while (c === lastLine[key]);
+    var pool = lines.filter(function (t) { return t !== lastLine[key]; });
+    if (!pool.length) pool = lines;
+    var c = pool[Math.floor(Math.random() * pool.length)];
     lastLine[key] = c;
     return c;
   }
@@ -377,11 +417,19 @@
     finale: ["おつかれさま。", "よく がんばったね。"]
   };
 
+  var GENT_LINES = {
+    greet:  ["やあ。ごきげんよう。", "また会えたね。", "さて、はじめようか。"],
+    good:   ["うむ、お見事。", "よく学んでいるね。", "その調子だ。", "見事な答えだ。"],
+    ng:     ["なに、誰しも通る道だ。", "気に病むことはない。", "覚えればそれでよい。"],
+    finale: ["よくやった。また、どこかで。", "今日はここまでだね。おつかれさま。"]
+  };
+
   // toon = マスコット＋吹き出し。ひとつの部品として使い回す。
   // 表示のたびに 1/RARE で白いほうが出る。そのときは台詞も差し替える。
   function toon(box, mood, line, sub, ctx) {
     var who = rollWho();
-    if (who === "non" && NON_LINES[ctx]) line = pick("non-" + ctx, NON_LINES[ctx]);
+    var own = who === "non" ? NON_LINES : who === "gent" ? GENT_LINES : null;
+    if (own && own[ctx]) line = pick(who + "-" + ctx, own[ctx]);
     box.innerHTML = '<div class="toon">' + mascotSVG(mood, who) +
       '<p class="speak">' + esc(line) + (sub || "") + "</p></div>";
   }

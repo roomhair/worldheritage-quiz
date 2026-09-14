@@ -497,16 +497,27 @@ kbd {
   --wool:     #F5F4F0;
   --wool-ln:  #BDBDB3;
   --red:      #D63B27;
+
+  /* 灰色のほう */
+  --shag:     #C6C6C0;
+  --shag-ln:  #9D9D96;
+  --felt:     #1B1E22;
+  --hat:      #7A5B3A;
+  --hat-dark: #63482D;
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
     --fur: #57A8E8; --fur-dim: #3F84BE; --limb: #3A434D;
     --wool: #EFEEE8; --wool-ln: #9EA09A; --red: #E4503B;
+    --shag: #B9B9B2; --shag-ln: #85857E; --felt: #2E343A;
+    --hat: #97744D; --hat-dark: #7C5E3C;
   }
 }
 :root[data-theme="dark"] {
   --fur: #57A8E8; --fur-dim: #3F84BE; --limb: #3A434D;
   --wool: #EFEEE8; --wool-ln: #9EA09A; --red: #E4503B;
+  --shag: #B9B9B2; --shag-ln: #85857E; --felt: #2E343A;
+  --hat: #97744D; --hat-dark: #7C5E3C;
 }
 
 .svg-defs { position: absolute; width: 0; height: 0; overflow: hidden; }
@@ -547,8 +558,41 @@ kbd {
 .mascot[data-who="non"][data-mood="good"]  .n-eye-arc,
 .mascot[data-who="non"][data-mood="party"] .n-eye-arc { display: block; }
 
+/* ── 灰色のほう ──
+   縦に長いふさふさ。シルクハット、黒い長い手足、とじた波形の目。 */
+.g-body  { fill: var(--shag); stroke: var(--shag-ln); stroke-width: 1.4; }
+.g-arm   { fill: none; stroke: var(--felt); stroke-width: 7; stroke-linecap: round; }
+
+/* 腕＋手をまとめて肩から回す */
+.limb   { transform-box: fill-box; transition: transform .2s ease; }
+.limb-l { transform-origin: 100% 0%; transform: rotate(6deg); }
+.limb-r { transform-origin: 0% 0%;   transform: rotate(-6deg); }
+.mascot[data-mood="good"]    .limb-l { transform: rotate(66deg); }
+.mascot[data-mood="good"]    .limb-r { transform: rotate(-66deg); }
+.mascot[data-mood="party"]   .limb-l { transform: rotate(96deg); }
+.mascot[data-mood="party"]   .limb-r { transform: rotate(-96deg); }
+.mascot[data-mood="oops"]    .limb-l { transform: rotate(-14deg); }
+.mascot[data-mood="oops"]    .limb-r { transform: rotate(14deg); }
+.mascot[data-mood="cheerup"] .limb-r { transform: rotate(-80deg); }
+.mascot[data-mood="think"]   .limb-l { transform: rotate(-4deg); }
+.g-hand  { fill: var(--felt); }
+.g-leg path { fill: none; stroke: var(--felt); stroke-width: 7; stroke-linecap: round; }
+.g-shoe  { fill: var(--felt); }
+.g-crown { fill: var(--hat); }
+.g-brim  { fill: var(--hat-dark); }
+.g-eye   { fill: none; stroke: var(--felt); stroke-width: 2; stroke-linecap: round; }
+.g-nose  { fill: var(--felt); }
+
+/* 帽子は喜ぶとわずかに浮く */
+.g-hat { transform-box: fill-box; transform-origin: 50% 100%; transition: transform .2s ease; }
+.mascot[data-who="gent"][data-mood="good"]  .g-hat { transform: translateY(-6%) rotate(-5deg); }
+.mascot[data-who="gent"][data-mood="party"] .g-hat { transform: translateY(-12%) rotate(-9deg); }
+.mascot[data-who="gent"][data-mood="oops"]  .g-hat { transform: translateY(3%) rotate(4deg); }
+
 /* まれにしか出てこないので、出たときだけ小さく弾ませる */
 .mascot[data-who="non"] { animation: arrive .45s cubic-bezier(.2, 1.4, .5, 1); }
+/* いちばん珍しいので、もう少しゆっくり現れる */
+.mascot[data-who="gent"] { animation: arrive .72s cubic-bezier(.2, 1.2, .4, 1); }
 @keyframes arrive {
   from { transform: translateY(9%) scale(.86); opacity: 0; }
   to   { transform: translateY(0) scale(1); opacity: 1; }
@@ -627,9 +671,10 @@ kbd {
 .react .mascot { width: 54px; height: 58px; }
 .react .speak { border-color: var(--accent); }
 .react .speak::before { border-right-color: var(--accent); }
-.toon:has(.mascot[data-who="non"]) + .speak,
 .toon:has(.mascot[data-who="non"]) .speak { border-color: var(--red); }
 .toon:has(.mascot[data-who="non"]) .speak::before { border-right-color: var(--red); }
+.toon:has(.mascot[data-who="gent"]) .speak { border-color: var(--hat); }
+.toon:has(.mascot[data-who="gent"]) .speak::before { border-right-color: var(--hat); }
 .react[data-tone="ng"] .speak { border-color: var(--wrong); }
 .react[data-tone="ng"] .speak::before { border-right-color: var(--wrong); }
 
@@ -638,7 +683,8 @@ kbd {
 .finale .speak { font-size: .95rem; }
 
 @media (prefers-reduced-motion: reduce) {
-  .mascot[data-mood="party"], .mascot[data-who="non"] { animation: none; }
+  .mascot[data-mood="party"], .mascot[data-who="non"], .mascot[data-who="gent"] { animation: none; }
+  .g-hat { transition: none; }
 }
 
 /* ══════════════════════════════════════════════════════════════
