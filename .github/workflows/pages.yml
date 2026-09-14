@@ -43,9 +43,18 @@ jobs:
               if (!c || !c.e) err.push(at + ': 選択肢' + (j + 1) + 'に解説(e)がありません');
             });
             if (!(Number.isInteger(q.a) && q.a >= 0 && q.a <= 3)) err.push(at + ': aが0〜3の整数ではありません');
+            if (![1, 2, 3].includes(q.level)) err.push(at + ': levelが1〜3ではありません');
           });
+          // カテゴリ×難易度に空の組み合わせがあると、その範囲を選んだ人が出題できなくなる
+          const cats = [...new Set(qs.map(q => q.cat))];
+          const grid = {};
+          qs.forEach(q => { grid[q.cat + '/' + q.level] = (grid[q.cat + '/' + q.level] || 0) + 1; });
+          cats.forEach(c => [1, 2, 3].forEach(lv => {
+            if (!grid[c + '/' + lv]) err.push('カテゴリ「' + c + '」に難易度' + lv + 'の問題がありません');
+          }));
           if (err.length) { err.forEach(e => console.error('::error::' + e)); process.exit(1); }
-          console.log(qs.length + '問 / 全選択肢に解説あり — OK');
+          console.log(qs.length + '問 / 全選択肢に解説あり / 難易度の空きなし — OK');
+          cats.forEach(c => console.log('  ' + c + ': 簡単' + grid[c + '/1'] + ' 普通' + grid[c + '/2'] + ' 難しい' + grid[c + '/3']));
           "
 
       - name: Check standalone build is up to date
