@@ -1,0 +1,87 @@
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches:
+      - main
+      - claude/world-heritage-quiz-level2-sqdby6
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  # どのブランチでも走る検証。設問データの体裁と、1ファイル版の同期を確かめる。
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate question bank
+        run: |
+          node -e "
+          global.window = {};
+          require('./data/questions.js');
+          const qs = window.WH_QUESTIONS;
+          const err = [];
+          if (!Array.isArray(qs) || !qs.length) err.push('設問が読み込めません');
+          const ids = new Set();
+          qs.forEach((q, i) => {
+            const at = 'id=' + q.id + ' (index ' + i + ')';
+            if (ids.has(q.id)) err.push(at + ': idが重複しています');
+            ids.add(q.id);
+            if (!q.cat || !q.q) err.push(at + ': catまたはqが空です');
+            if (!Array.isArray(q.choices) || q.choices.length !== 4) err.push(at + ': 選択肢が4つではありません');
+            else q.choices.forEach((c, j) => {
+              if (!c || !c.t) err.push(at + ': 選択肢' + (j + 1) + 'のtが空です');
+              if (!c || !c.e) err.push(at + ': 選択肢' + (j + 1) + 'に解説(e)がありません');
+            });
+            if (!(Number.isInteger(q.a) && q.a >= 0 && q.a <= 3)) err.push(at + ': aが0〜3の整数ではありません');
+          });
+          if (err.length) { err.forEach(e => console.error('::error::' + e)); process.exit(1); }
+          console.log(qs.length + '問 / 全選択肢に解説あり — OK');
+          "
+
+      - name: Check standalone build is up to date
+        run: |
+          node build-standalone.js
+          git diff --exit-code -- dist/worldheritage-quiz.html \
+            || { echo '::error::dist/worldheritage-quiz.html が古いです。node build-standalone.js を実行してコミットしてください。'; exit 1; }
+
+      # ブラウザが古い css/js を掴んだままにならないよう、配信するHTMLの参照だけに
+      # コミットSHAを付ける。リポジトリのファイルは相対パスのままなので、
+      # ローカルで index.html を直接開く使い方は変わらない。
+      - name: Add cache-busting query to assets
+        run: |
+          python3 - <<'PY'
+          import os, re
+          v = os.environ['GITHUB_SHA'][:8]
+          s = open('index.html').read()
+          s, n = re.subn(r'(href="styles\.css|src="app\.js|src="data/questions\.js)"', rf'\1?v={v}"', s)
+          assert n == 3, f'参照の書き換えに失敗しました（置換 {n} 件、期待 3 件）'
+          s = s.replace('<span id="build"></span>', f'<span id="build">build {v}</span>')
+          open('index.html', 'w').write(s)
+          PY
+          grep -n 'styles.css\|app.js\|data/questions.js\|id="build"' index.html
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: .
+
+  # Pages 環境は既定でデフォルトブランチからのデプロイしか許可しないため main 限定。
+  deploy:
+    needs: build
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

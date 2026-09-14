@@ -1,1 +1,96 @@
-# worldheritage-quiz
+# 世界遺産検定2級 一問一答
+
+世界遺産検定2級の対策用に作った、4択の一問一答クイズです。ブラウザで `index.html` を開くだけで動きます（ビルド・サーバー不要）。
+
+## 特徴
+
+- **全60問**、5カテゴリ（条約と理念／しくみと制度／危機遺産と保護／日本の遺産／世界の遺産）
+- **4つの選択肢すべてに解説つき**。正解の根拠だけでなく、選ばなかった誤答が「なぜ誤りか」まで表示されます
+- 多くの問題に**補足**（関連する年号・件数・類似事例）を付与
+- カテゴリ絞り込み／出題数（10・20・30・すべて）／ランダム出題・収録順の切り替え
+- 進捗バー、カテゴリ別正答率、まちがえた問題の一覧と復習モード
+- キーボード操作：`1`〜`4` で回答、`Enter` / `Space` で次の問題へ
+- ライト／ダークテーマ対応、スマートフォン幅対応
+- 直近の成績は端末の localStorage にのみ保存されます（外部送信なし）
+
+## 使い方
+
+```
+git clone https://github.com/roomhair/worldheritage-quiz
+cd worldheritage-quiz
+open index.html          # macOS。Windows は start index.html
+```
+
+配布・共有には `dist/worldheritage-quiz.html` を使う。CSS と JS を埋め込んだ1ファイル版で、
+ダブルクリックするだけで動く。`data/questions.js` などを編集したら作り直すこと:
+
+```
+node build-standalone.js
+```
+
+## ファイル構成
+
+| パス | 役割 |
+| --- | --- |
+| `index.html` | 画面（設定 / 出題 / 結果の3スクリーン） |
+| `styles.css` | デザイントークンとスタイル |
+| `app.js` | 出題・採点・復習ロジック |
+| `data/questions.js` | 設問データ（`window.WH_QUESTIONS`） |
+| `build-standalone.js` | 1ファイル版 `dist/worldheritage-quiz.html` の生成 |
+| `.github/workflows/pages.yml` | 設問データの検証と GitHub Pages へのデプロイ |
+
+## 設問を追加・編集する
+
+`data/questions.js` の配列に、次の形式でオブジェクトを追加します。
+
+```js
+{
+  id: 61,                    // 一意の番号
+  cat: "日本の遺産",          // 既存カテゴリ名にすると自動でチップに集計される
+  q:  "問題文",
+  a:  2,                     // 正解の choices インデックス（0起点）
+  choices: [
+    { t: "選択肢1", e: "この選択肢が誤り（または正解）である理由の解説" },
+    { t: "選択肢2", e: "..." },
+    { t: "選択肢3", e: "..." },
+    { t: "選択肢4", e: "..." }
+  ],
+  note: "補足（任意）"
+}
+```
+
+新しい `cat` を書けば、カテゴリのチップは自動的に増えます。
+
+## 公開（GitHub Pages）
+
+`.github/workflows/pages.yml` がリポジトリの中身をそのまま GitHub Pages にデプロイする。
+公開URLは:
+
+```
+https://roomhair.github.io/worldheritage-quiz/
+```
+
+公開するには、先に **Settings → Pages → Build and deployment → Source** を
+**GitHub Actions** にしておく必要がある（リポジトリはすでに public）。
+
+ワークフローは `build`（全ブランチ）と `deploy`（`main` のみ）に分かれている。
+Pages 環境は既定でデフォルトブランチからのデプロイしか許可しないため、
+実際に公開するには変更を `main` にマージする。
+
+`build` ジョブは次の3つを行う。
+
+1. **設問データの検証** — id の重複、選択肢がちょうど4つあるか、
+   **4つすべてに解説 `e` があるか**、`a` が 0〜3 の整数か。
+   解説の付け忘れはここで落ちる。
+2. **1ファイル版の同期確認** — `dist/worldheritage-quiz.html` がソースから作り直された
+   状態か。`data/questions.js` などを編集したら `node build-standalone.js` を実行して
+   コミットすること。
+3. **キャッシュ対策** — 配信するHTMLの `styles.css` / `app.js` / `data/questions.js` の
+   参照にコミットSHAを付ける（`data/questions.js?v=559c1231` のように）。ブラウザが
+   古い css/js を掴んだまま新しいHTMLと混ざるのを防ぐためで、**リポジトリのファイルは
+   相対パスのまま**なので `index.html` を直接開く使い方は変わらない。
+   フッターにそのSHAを出しているので、表示中のページがどのビルドか判別できる。
+
+## 注意
+
+出題内容は公式教材の範囲を踏まえた**学習用の自作問題**であり、実際の検定問題ではありません。制度や登録件数は 2024年の登録（日本26件：文化21・自然5）時点の情報にもとづいています。
