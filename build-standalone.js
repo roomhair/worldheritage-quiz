@@ -18,8 +18,8 @@ html = html.replace(
 );
 
 html = html.replace(
-  /[ \t]*<script src="data\/questions\.js"><\/script>\n[ \t]*<script src="app\.js"><\/script>\n/,
-  `<script>\n${read('data/questions.js').trimEnd()}\n${read('app.js').trimEnd()}\n</script>\n`
+  /[ \t]*<script src="data\/questions\.js"><\/script>\n[ \t]*<script src="data\/places\.js"><\/script>\n[ \t]*<script src="app\.js"><\/script>\n/,
+  `<script>\n${read('data/questions.js').trimEnd()}\n${read('data/places.js').trimEnd()}\n${read('app.js').trimEnd()}\n</script>\n`
 );
 
 for (const leftover of [/href="styles\.css/, /src="app\.js/, /src="data\//]) {

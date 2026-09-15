@@ -165,6 +165,23 @@
 
 </main>
 
+<!-- 結果画面の前に挟む演出。どこを触っても飛ばせる -->
+<div id="curtain" class="curtain" hidden role="dialog" aria-label="世界遺産をめぐる演出">
+  <div class="stage">
+    <div class="scene-art" id="scene-art" aria-hidden="true"></div>
+    <div class="scene-ground" aria-hidden="true"></div>
+    <div class="actors" id="actors" aria-hidden="true"></div>
+  </div>
+  <div class="confetti" id="confetti" aria-hidden="true"></div>
+  <div class="placard">
+    <p class="placard-eyebrow" id="scene-eyebrow">今日のごほうび</p>
+    <h2 class="placard-name" id="scene-name"></h2>
+    <p class="placard-where" id="scene-where"></p>
+    <p class="placard-line" id="scene-line"></p>
+  </div>
+  <p class="skip-hint">画面のどこかに触れると飛ばせます</p>
+</div>
+
 <footer class="foot">
   <div class="wrap foot-in">
     <p>世界遺産検定2級 一問一答 ／ 全<b id="foot-count">150</b>問・3段階の難易度・全選択肢解説つき</p>
@@ -173,4 +190,5 @@
 </footer>
 
 <script src="data/questions.js"></script>
+<script src="data/places.js"></script>
 <script src="app.js"></script>

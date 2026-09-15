@@ -734,3 +734,132 @@ kbd {
 @media (prefers-reduced-motion: reduce) {
   .chip:active, .btn-solid:active, .btn-quiet:active { transform: none; }
 }
+
+/* ══════════════════════════════════════════════════════════════
+   結果の前に挟む演出
+   キャラクターがどこかの世界遺産を訪ねて帰ってくる。
+   景色は画面全体を覆うので、明暗どちらのテーマでも同じ夕景でよい。
+   ══════════════════════════════════════════════════════════════ */
+
+.curtain {
+  position: fixed; inset: 0; z-index: 60;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center; gap: 26px;
+  padding: 24px;
+  background: linear-gradient(#20394A 0%, #33586B 52%, #6E8FA0 100%);
+  cursor: pointer;
+  animation: veil .28s ease both;
+  overscroll-behavior: contain;
+}
+@keyframes veil { from { opacity: 0; } to { opacity: 1; } }
+.curtain.is-leaving { animation: veil .3s ease reverse both; }
+
+/* ── 景色 ── */
+.stage {
+  position: relative;
+  width: 100%; max-width: 32rem;
+  aspect-ratio: 2 / 1;
+  animation: stage-in .5s cubic-bezier(.2, .9, .3, 1) both;
+}
+@keyframes stage-in { from { opacity: 0; transform: scale(.97); } to { opacity: 1; transform: none; } }
+
+.scene-art { position: absolute; inset: 0; }
+.scene-art svg { width: 100%; height: 100%; display: block; }
+.s-sun   { fill: #F2BA68; }
+.s-far   { fill: #3E6273; }
+.s-mid   { fill: #29424F; }
+.s-near  { fill: #142630; }
+.s-water { fill: #4A7488; opacity: .75; }
+.s-snow  { fill: #E6EEF1; }
+
+/* 地面。ここをキャラクターが歩く */
+.scene-ground {
+  position: absolute; left: 0; right: 0; bottom: 0;
+  height: 16.7%;                 /* 240×120 の y=100 に合わせる */
+  background: #0E1E27;
+}
+
+/* ── 登場人物 ── */
+.actors {
+  position: absolute; left: 0; right: 0;
+  bottom: 16.7%;                 /* 地面の帯の上端にそろえる */
+  height: 46%;
+}
+.actors .mascot {
+  position: absolute; bottom: 0;
+  width: auto; height: 100%;
+  animation: walk-in 1.25s cubic-bezier(.3, .7, .4, 1) both,
+             bob .42s ease-in-out 6;
+}
+@keyframes walk-in {
+  from { left: -18%; }
+  to   { left: var(--x, 42%); }
+}
+@keyframes bob {
+  0%, 100% { transform: translateY(0) rotate(-1.5deg); }
+  50%      { transform: translateY(-7%) rotate(1.5deg); }
+}
+
+/* ── 立て札 ── */
+.placard {
+  width: 100%; max-width: 32rem;
+  background: rgba(10, 22, 29, .72);
+  border: 1px solid rgba(255, 255, 255, .18);
+  border-radius: 3px;
+  padding: 16px 18px;
+  color: #EDF1F2;
+  animation: placard-in .5s cubic-bezier(.2, .9, .3, 1) both .9s;
+}
+@keyframes placard-in { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+.placard-eyebrow {
+  margin: 0 0 6px; font-family: var(--mono);
+  font-size: .66rem; letter-spacing: .18em; color: #9FBCC8;
+}
+.placard-name { margin: 0; font-size: 1.15rem; font-weight: 600; letter-spacing: .03em; line-height: 1.5; }
+.placard-where { margin: 4px 0 0; font-size: .78rem; color: #A9C4CE; letter-spacing: .06em; }
+.placard-line { margin: 10px 0 0; font-size: .9rem; line-height: 1.8; color: #DCE6E9; }
+
+.skip-hint {
+  margin: 0; font-family: var(--mono);
+  font-size: .68rem; letter-spacing: .12em; color: rgba(237, 241, 242, .6);
+  animation: veil .4s ease both 1.6s;
+}
+
+/* ── 満点のとき ── */
+.curtain.is-perfect { background: linear-gradient(#2A2438 0%, #5B4560 48%, #C98C63 100%); }
+.curtain.is-perfect .s-sun { fill: #FFD98A; }
+.curtain.is-perfect .placard { border-color: rgba(255, 216, 138, .5); }
+.curtain.is-perfect .placard-name { color: #FFD98A; font-size: 1.32rem; }
+.curtain.is-perfect .placard-eyebrow { color: #FFD98A; }
+.curtain.is-perfect .actors .mascot:nth-child(2) { animation-delay: .18s, .18s; }
+.curtain.is-perfect .actors .mascot:nth-child(3) { animation-delay: .36s, .36s; }
+
+.confetti {
+  position: absolute; inset: 0;
+  overflow: hidden; pointer-events: none;
+}
+.confetti i {
+  position: absolute; top: -6vh;
+  width: 6px; height: 11px; border-radius: 1px;
+  animation: fall linear infinite;
+}
+/* translateY を % で書くと要素自身の高さが基準になり、ほとんど落ちない */
+@keyframes fall {
+  from { transform: translateY(0) rotate(0); opacity: 0; }
+  10%  { opacity: 1; }
+  to   { transform: translateY(112vh) rotate(560deg); opacity: .9; }
+}
+
+@media (max-width: 560px) {
+  .curtain { gap: 18px; padding: 18px; }
+  .placard { padding: 14px 15px; }
+  .placard-name { font-size: 1.05rem; }
+  .placard-line { font-size: .86rem; }
+}
+
+/* 動きを減らす設定では、歩かせず紙芝居の一枚として見せる */
+@media (prefers-reduced-motion: reduce) {
+  .stage, .placard, .skip-hint { animation: none; }
+  .actors .mascot { animation: none; left: var(--x, 42%); }
+  .confetti { display: none; }
+}
