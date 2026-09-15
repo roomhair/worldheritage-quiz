@@ -593,6 +593,80 @@
     });
   }
 
+
+  /* ═══════ 結果の前の演出 ═══════
+     キャラクターがどこかの世界遺産を訪ねて帰ってくる。
+     画面のどこかに触れる／キーを押すと、いつでも飛ばせる。 */
+
+  var PLACES = window.WH_PLACES || [];
+  var PERFECT = window.WH_PERFECT || null;
+  var visitTimer = null;
+
+  var curtainClosing = false;
+  function closeCurtain() {
+    var c = $("curtain");
+    // pointerdown と click の両方から呼ばれるので、二重に走らせない
+    if (c.hidden || curtainClosing) return;
+    curtainClosing = true;
+    clearTimeout(visitTimer);
+    visitTimer = null;
+    c.classList.add("is-leaving");
+    // 閉じ終わってから隠す。連打されても二重に走らないよう先に外す
+    setTimeout(function () {
+      c.hidden = true;
+      c.classList.remove("is-leaving", "is-perfect");
+      document.body.style.overflow = "";
+      curtainClosing = false;
+    }, 300);
+  }
+
+  function confettiInto(box, n) {
+    var colors = ["#FFD98A", "#E9705A", "#7FD6C0", "#F2F1EC", "#9BB8E8"];
+    var html = "";
+    for (var i = 0; i < n; i++) {
+      html += '<i style="left:' + (Math.random() * 100).toFixed(1) + "%;" +
+              "background:" + colors[i % colors.length] + ";" +
+              "animation-duration:" + (1.7 + Math.random() * 1.6).toFixed(2) + "s;" +
+              "animation-delay:" + (Math.random() * 1.2).toFixed(2) + 's"></i>';
+    }
+    box.innerHTML = html;
+  }
+
+  // perfect=true なら特別な景色。それ以外は訪問先をランダムに選ぶ
+  function playVisit(perfect) {
+    if (!PLACES.length) return;
+    var c = $("curtain");
+    var spot = perfect && PERFECT ? PERFECT : PLACES[Math.floor(Math.random() * PLACES.length)];
+
+    $("scene-art").innerHTML =
+      '<svg viewBox="0 0 240 120" preserveAspectRatio="xMidYMid slice">' + spot.art + "</svg>";
+    $("scene-eyebrow").textContent = perfect ? "満点のごほうび" : "ひと息いれて";
+    $("scene-name").textContent = spot.name;
+    $("scene-where").textContent = spot.where;
+    $("scene-line").textContent = spot.line;
+
+    // 満点は3体そろって、それ以外はいつもの確率で1体
+    var actors = $("actors");
+    if (perfect) {
+      actors.innerHTML =
+        mascotSVG("party", "sun").replace("<svg", '<svg style="--x:24%"') +
+        mascotSVG("party", "non").replace("<svg", '<svg style="--x:44%"') +
+        mascotSVG("party", "gent").replace("<svg", '<svg style="--x:64%"');
+      confettiInto($("confetti"), 30);
+    } else {
+      actors.innerHTML = mascotSVG("good", rollWho()).replace("<svg", '<svg style="--x:42%"');
+      $("confetti").innerHTML = "";
+    }
+
+    c.classList.toggle("is-perfect", !!perfect);
+    c.hidden = false;
+    document.body.style.overflow = "hidden";
+
+    var hold = perfect ? 5200 : 4000;
+    if (window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches) hold = 2200;
+    visitTimer = setTimeout(closeCurtain, hold);
+  }
+
   function finish() {
     var total = state.answers.length;
     var ok = correctCount();
@@ -660,6 +734,7 @@
     });
 
     show("result");
+    if (total) playVisit(ok === total);
   }
 
   function reviewWrong(ids) {
@@ -694,7 +769,13 @@
     if (last && last.wrongIds) reviewWrong(last.wrongIds);
   });
 
+  ["pointerdown", "click"].forEach(function (ev) {
+    $("curtain").addEventListener(ev, closeCurtain);
+  });
+
   document.addEventListener("keydown", function (e) {
+    // 演出中はどのキーでも飛ばす。ほかの操作はそのあと
+    if (!$("curtain").hidden) { closeCurtain(); e.preventDefault(); return; }
     if ($("screen-quiz").hidden) return;
     if (e.metaKey || e.ctrlKey || e.altKey) return;
     if (!state.locked && e.key >= "1" && e.key <= "4") {

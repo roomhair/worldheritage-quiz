@@ -72,12 +72,12 @@ jobs:
           import os, re
           v = os.environ['GITHUB_SHA'][:8]
           s = open('index.html').read()
-          s, n = re.subn(r'(href="styles\.css|src="app\.js|src="data/questions\.js)"', rf'\1?v={v}"', s)
-          assert n == 3, f'参照の書き換えに失敗しました（置換 {n} 件、期待 3 件）'
+          s, n = re.subn(r'(href="styles\.css|src="app\.js|src="data/(?:questions|places)\.js)"', rf'\1?v={v}"', s)
+          assert n == 4, f'参照の書き換えに失敗しました（置換 {n} 件、期待 4 件）'
           s = s.replace('<span id="build"></span>', f'<span id="build">build {v}</span>')
           open('index.html', 'w').write(s)
           PY
-          grep -n 'styles.css\|app.js\|data/questions.js\|id="build"' index.html
+          grep -n 'styles.css\|app.js\|data/questions.js\|data/places.js\|id="build"' index.html
 
       - uses: actions/upload-pages-artifact@v3
         with:
