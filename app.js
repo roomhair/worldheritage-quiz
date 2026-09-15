@@ -7,6 +7,7 @@
   BANK.forEach(function (q) { if (CATS.indexOf(q.cat) < 0) CATS.push(q.cat); });
 
   var STORE_KEY = "wh2-quiz-v1";
+  var RESUME_KEY = "wh2-quiz-v1-resume";
   var COUNTS = [10, 20, 30, 50, 0]; // 0 = すべて
   var LEVELS = [
     { v: 0, label: "すべて" },
@@ -46,6 +47,90 @@
     try { localStorage.setItem(STORE_KEY, JSON.stringify(data)); } catch (e) { /* 無視 */ }
   }
 
+  /* ---------- 中断中のクイズ ----------
+     天板のロゴから設定画面へ戻ったとき、答えた分をここに控える。
+     「前回の記録」とは別の鍵にして、互いに壊さないようにしている。 */
+  function loadResume() {
+    try { return JSON.parse(localStorage.getItem(RESUME_KEY) || "null"); }
+    catch (e) { return null; }
+  }
+  function saveResume(data) {
+    try {
+      if (data) localStorage.setItem(RESUME_KEY, JSON.stringify(data));
+      else localStorage.removeItem(RESUME_KEY);
+    } catch (e) { /* 無視 */ }
+  }
+
+  // 答えたのに「次の問題へ」を押していない場合、その問題はもう済んでいる。
+  // 控える位置を1つ進めておかないと、再開したときに同じ問題を二重に数えてしまう。
+  function suspend() {
+    if (!state.queue.length) return;
+    var at = state.idx + (state.locked ? 1 : 0);
+    saveResume({
+      ids: state.queue.map(function (q) { return q.id; }),
+      idx: at,
+      correct: correctCount(),
+      answers: state.answers.map(function (x) { return { id: x.q.id, picked: x.picked }; }),
+      cats: state.cats.slice(),
+      level: state.level,
+      count: state.count,
+      order: state.order,
+      at: Date.now()
+    });
+  }
+
+  function resumeSaved() {
+    var rs = loadResume();
+    if (!rs || !rs.ids || !rs.ids.length) return;
+
+    var byId = {};
+    BANK.forEach(function (q) { byId[q.id] = q; });
+    var queue = rs.ids.map(function (id) { return byId[id]; });
+    // 設問が差し替わっていたら再開をあきらめる（控えを消して、ふつうに選び直してもらう）
+    if (queue.indexOf(undefined) >= 0) { saveResume(null); buildSetup(); return; }
+
+    state.queue = queue;
+    state.answers = (rs.answers || [])
+      .filter(function (x) { return byId[x.id]; })
+      .map(function (x) { return { q: byId[x.id], picked: x.picked }; });
+    state.idx = Math.min(rs.idx || 0, queue.length);
+    // 連続正解は保存せず、末尾からさかのぼって数え直す
+    var st = 0;
+    for (var i = state.answers.length - 1; i >= 0; i--) {
+      if (state.answers[i].picked === state.answers[i].q.a) st++; else break;
+    }
+    state.streak = st;
+    saveResume(null);
+
+    $("q-total").textContent = queue.length;
+    // 最後まで答えた状態で中断していたら、そのまま結果へ
+    if (state.idx >= queue.length) { finish(); return; }
+    show("quiz");
+    render();
+  }
+
+  // 中断中のクイズがあれば、その出題条件を設定画面に戻しておく。
+  // 「初めから」を押したときに同じ条件でやり直せる。
+  function restoreConditions() {
+    var rs = loadResume();
+    if (!rs) return;
+    if (rs.cats) {
+      var valid = rs.cats.filter(function (c) { return CATS.indexOf(c) >= 0; });
+      if (valid.length) state.cats = valid;
+    }
+    if (LEVELS.filter(function (L) { return L.v === rs.level; }).length) state.level = rs.level;
+    if (COUNTS.indexOf(rs.count) >= 0) state.count = rs.count;
+    if (rs.order === "shuffle" || rs.order === "seq") state.order = rs.order;
+  }
+
+  function goHome() {
+    // 出題中なら、続きから戻れるように控えてから設定画面へ
+    if (!$("screen-quiz").hidden) suspend();
+    buildSetup();
+    sayGreeting();
+    show("setup");
+  }
+
   /* ---------- 画面切替 ---------- */
   function show(name) {
     ["setup", "quiz", "result"].forEach(function (n) {
@@ -64,7 +149,7 @@
       b.type = "button";
       b.className = "chip";
       b.id = "cat-" + CATS.indexOf(cat);
-      b.setAttribute("aria-pressed", "true");
+      b.setAttribute("aria-pressed", state.cats.indexOf(cat) >= 0 ? "true" : "false");
       b.innerHTML = cat + '<span class="n">' + n + "</span>";
       b.addEventListener("click", function () {
         var on = b.getAttribute("aria-pressed") === "true";
@@ -117,6 +202,7 @@
     });
 
     Array.prototype.forEach.call(document.querySelectorAll("[data-order]"), function (b) {
+      b.setAttribute("aria-checked", b.dataset.order === state.order ? "true" : "false");
       b.addEventListener("click", function () {
         state.order = b.dataset.order;
         Array.prototype.forEach.call(document.querySelectorAll("[data-order]"), function (o) {
@@ -135,6 +221,17 @@
       $("last-line").innerHTML = "直近の成績：<b>" + last.correct + " / " + last.total + "</b>（正答率 " +
         Math.round(last.correct / last.total * 100) + "%）／ 未正解 <b>" + (last.wrongIds || []).length + "</b>問";
       $("btn-retry-wrong").disabled = !(last.wrongIds && last.wrongIds.length);
+    }
+
+    var rs = loadResume();
+    var hasResume = !!(rs && rs.ids && rs.ids.length);
+    $("resume-panel").hidden = !hasResume;
+    if (hasResume) {
+      $("resume-line").innerHTML = rs.idx >= rs.ids.length
+        ? "全 <b>" + rs.ids.length + "</b> 問に答え終えています（正答 <b>" + rs.correct +
+          "</b>）。再開すると結果が出ます。"
+        : "全 <b>" + rs.ids.length + "</b> 問中 <b>" + (rs.idx + 1) +
+          "</b> 問目まで進んでいます（ここまで正答 <b>" + rs.correct + "</b>）";
     }
   }
 
@@ -176,6 +273,7 @@
 
   /* ---------- 出題 ---------- */
   function start(list) {
+    saveResume(null);   // 新しく始めるので、中断中の控えは捨てる
     state.queue = list;
     state.idx = 0;
     state.answers = [];
@@ -579,7 +677,14 @@
     else { sayGreeting(); show("setup"); }
   });
   $("btn-again").addEventListener("click", startFromSetup);
-  $("btn-home").addEventListener("click", function () { buildSetup(); sayGreeting(); show("setup"); });
+  $("btn-home").addEventListener("click", goHome);
+  $("btn-logo").addEventListener("click", goHome);
+  $("btn-resume").addEventListener("click", resumeSaved);
+  $("btn-restart").addEventListener("click", function () {
+    saveResume(null);
+    buildSetup();
+    startFromSetup();
+  });
   $("btn-review-wrong").addEventListener("click", function () {
     reviewWrong(state.answers.filter(function (a) { return a.picked !== a.q.a; })
       .map(function (a) { return a.q.id; }));
@@ -603,6 +708,7 @@
     }
   });
 
+  restoreConditions();
   buildSetup();
   sayGreeting();
 })();

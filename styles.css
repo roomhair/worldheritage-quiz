@@ -100,7 +100,7 @@ b, strong { font-weight: 600; }
 }
 
 /* ── 見出しラベル（台帳の項目名） ── */
-.frow-label, .tbl-head, .recall-label, .verdict-tag, .mast-meta {
+.frow-label, .tbl-head, .recall-label, .resume-label, .verdict-tag, .mast-meta {
   font-family: var(--mono);
   font-size: .7rem;
   font-weight: 500;
@@ -116,7 +116,13 @@ b, strong { font-weight: 600; }
   gap: 12px 20px; flex-wrap: wrap;
   padding-block: 15px;
 }
-.logo { margin: 0; display: flex; align-items: center; gap: 11px; }
+.logo { margin: 0; display: flex; align-items: center; }
+.logo-btn {
+  font: inherit; color: inherit; background: none; border: 0;
+  margin: 0; padding: 0; text-align: left; cursor: pointer;
+  display: flex; align-items: center; gap: 11px;
+  border-radius: 2px;
+}
 .logo-mark { color: var(--accent); display: flex; }
 .logo-txt { display: flex; flex-direction: column; line-height: 1.4; }
 .logo-name { font-weight: 600; font-size: 1rem; letter-spacing: .06em; }
@@ -222,6 +228,18 @@ main { padding-block: 44px 64px; }
 }
 .recall-line { margin: 0; font-size: .88rem; color: var(--ink-2); }
 .recall-line b { font-family: var(--mono); font-weight: 500; color: var(--ink); }
+
+/* 中断中のクイズ。設定画面のいちばん上に出して、続きから戻れることを知らせる */
+.resume {
+  display: flex; flex-direction: column; gap: 10px; align-items: flex-start;
+  padding: 15px 16px;
+  background: var(--accent-2);
+  border-left: 2px solid var(--accent);
+}
+.resume-label { color: var(--accent); }
+.resume-line { margin: 0; font-size: .88rem; color: var(--ink-2); }
+.resume-line b { font-family: var(--mono); font-weight: 500; color: var(--ink); }
+.resume-actions { display: flex; flex-wrap: wrap; gap: 9px; }
 
 .fineprint { margin: 0; font-size: .75rem; line-height: 1.8; color: var(--ink-3); }
 
@@ -431,6 +449,8 @@ kbd {
   .actions { flex-direction: column; }
   .actions .btn { width: 100%; }
   .recall .btn-quiet { width: 100%; }
+  .resume-actions { flex-direction: column; align-items: stretch; width: 100%; }
+  .resume-actions .btn { width: 100%; }
 
   /* 選択肢：番号を小さめにして本文の幅を稼ぎ、印は本文の下へ回す */
   .choices { border-top: 0; }
@@ -701,6 +721,7 @@ kbd {
   .btn-quiet:hover { border-color: var(--accent); color: var(--accent); }
   .btn-quiet:disabled:hover { border-color: var(--line); color: var(--ink-2); }
   .btn-text:hover { color: var(--wrong); }
+  .logo-btn:hover .logo-name { color: var(--accent); }
 
   .choice:hover:not(:disabled) { background: var(--sink); border-left-color: var(--line-firm); }
   .choice:hover:not(:disabled) .key { color: var(--accent); border-color: var(--accent); }
