@@ -26,11 +26,11 @@
     cats: CATS.slice(),
     level: 0,
     count: 20,
-    order: "shuffle",
+    order: "shuffle",   // 出題順（shuffle / seq）
     queue: [],
     idx: 0,
     answers: [],   // {q, picked}
-    order: [],     // 表示位置 → q.choices のインデックス
+    shown: [],     // 表示位置 → q.choices のインデックス
     streak: 0,     // 連続正解
     locked: false
   };
@@ -196,8 +196,9 @@
     var q = state.queue[state.idx];
     state.locked = false;
     // 正解の位置を覚えてしまわないよう、表示順は毎回シャッフルする。
-    // order[表示位置] = データ上のインデックス。
-    state.order = shuffle(q.choices.map(function (c, i) { return i; }));
+    // shown[表示位置] = データ上のインデックス。出題順の state.order とは別物なので
+    // 同じ名前にしないこと（同名にすると出題順の設定が上書きされ、ランダムが効かなくなる）。
+    state.shown = shuffle(q.choices.map(function (c, i) { return i; }));
 
     $("q-index").textContent = state.idx + 1;
     $("progress-bar").style.width = (state.idx / state.queue.length * 100) + "%";
@@ -214,7 +215,7 @@
 
     var ol = $("choices");
     ol.innerHTML = "";
-    state.order.forEach(function (src, pos) {
+    state.shown.forEach(function (src, pos) {
       var li = document.createElement("li");
       var b = document.createElement("button");
       b.type = "button";
@@ -593,9 +594,9 @@
     if (e.metaKey || e.ctrlKey || e.altKey) return;
     if (!state.locked && e.key >= "1" && e.key <= "4") {
       var pos = Number(e.key) - 1;
-      if (state.order && pos < state.order.length) {
+      if (state.shown && pos < state.shown.length) {
         e.preventDefault();
-        answer(state.order[pos]);
+        answer(state.shown[pos]);
       }
     } else if (state.locked && (e.key === "Enter" || e.key === " ")) {
       e.preventDefault(); next();
